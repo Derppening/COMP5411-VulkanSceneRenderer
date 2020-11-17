@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <vector>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include "VulkanTools.h"
 
@@ -63,6 +65,8 @@ public:
 #elif defined(_DIRECT2DISPLAY)
 	void initSurface(uint32_t width, uint32_t height);
 	void createDirect2DisplaySurface(uint32_t width, uint32_t height);
+#else
+	void initSurface(GLFWwindow* window);
 #endif
 	void connect(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);
 	void create(uint32_t* width, uint32_t* height, bool vsync = false);

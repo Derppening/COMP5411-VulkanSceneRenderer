@@ -10,6 +10,8 @@
 
 #include "VulkanSwapChain.h"
 
+#include <vulkan/vulkan.hpp>
+
 /** @brief Creates the platform specific surface abstraction of the native platform window used for presentation */	
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 void VulkanSwapChain::initSurface(void* platformHandle, void* platformWindow)
@@ -23,6 +25,8 @@ void VulkanSwapChain::initSurface(xcb_connection_t* connection, xcb_window_t win
 void VulkanSwapChain::initSurface(void* view)
 #elif defined(_DIRECT2DISPLAY)
 void VulkanSwapChain::initSurface(uint32_t width, uint32_t height)
+#else
+void VulkanSwapChain::initSurface(GLFWwindow* window)
 #endif
 {
 	VkResult err = VK_SUCCESS;
@@ -61,6 +65,8 @@ void VulkanSwapChain::initSurface(uint32_t width, uint32_t height)
 	surfaceCreateInfo.connection = connection;
 	surfaceCreateInfo.window = window;
 	err = vkCreateXcbSurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
+#else
+	err = glfwCreateWindowSurface(instance, window, nullptr, &surface);
 #endif
 
 	if (err != VK_SUCCESS) {

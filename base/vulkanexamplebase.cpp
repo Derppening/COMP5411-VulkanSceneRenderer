@@ -47,6 +47,12 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 	instanceExtensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_MACOS_MVK)
 	instanceExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
+#else
+    {
+        uint32_t glfwExtensionCount;
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        instanceExtensions.insert(instanceExtensions.end(), glfwExtensions, glfwExtensions + glfwExtensionCount);
+    }
 #endif
 
 	// Get extensions supported by the instance and store for later use
@@ -121,6 +127,10 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 void VulkanExampleBase::renderFrame()
 {
 	VulkanExampleBase::prepareFrame();
+	if (resized) {
+	    resized = false;
+	    return;
+	}
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &drawCmdBuffers[currentBuffer];
 	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
@@ -466,6 +476,49 @@ void VulkanExampleBase::renderLoop()
 	}
 #elif (defined(VK_USE_PLATFORM_MACOS_MVK) && defined(VK_EXAMPLE_XCODE_GENERATED))
 	[NSApp run];
+#else
+	while (!glfwWindowShouldClose(window)) {
+        auto tStart = std::chrono::high_resolution_clock::now();
+        if (viewUpdated)
+        {
+            viewUpdated = false;
+            viewChanged();
+        }
+        processInput();
+        render();
+        frameCounter++;
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+        frameTimer = tDiff / 1000.0f;
+        camera.update(frameTimer);
+        if (camera.moving())
+        {
+            viewUpdated = true;
+        }
+        // Convert to clamped timer value
+        if (!paused)
+        {
+            timer += timerSpeed * frameTimer;
+            if (timer > 1.0)
+            {
+                timer -= 1.0f;
+            }
+        }
+        float fpsTimer = std::chrono::duration<double, std::milli>(tEnd - lastTimestamp).count();
+        if (fpsTimer > 1000.0f)
+        {
+            if (!settings.overlay)
+            {
+                std::string windowTitle = getWindowTitle();
+                glfwSetWindowTitle(window, windowTitle.c_str());
+            }
+            lastFPS = (float)frameCounter * (1000.0f / fpsTimer);
+            frameCounter = 0;
+            lastTimestamp = tEnd;
+        }
+        updateOverlay();
+        glfwPollEvents();
+    }
 #endif
 	// Flush device to make sure all resources can be freed
 	if (device != VK_NULL_HANDLE) {
@@ -729,6 +782,8 @@ VulkanExampleBase::~VulkanExampleBase()
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
 	xcb_destroy_window(connection, window);
 	xcb_disconnect(connection);
+#else
+	glfwDestroyWindow(window);
 #endif
 }
 
@@ -772,7 +827,6 @@ bool VulkanExampleBase::initVulkan()
 	// Defaults to the first device unless specified by command line
 	uint32_t selectedDevice = 0;
 
-#if !defined(VK_USE_PLATFORM_ANDROID_KHR)
 	// GPU selection via command line argument
 	for (size_t i = 0; i < args.size(); i++)
 	{
@@ -820,7 +874,6 @@ bool VulkanExampleBase::initVulkan()
 			}
 		}
 	}
-#endif
 
 	physicalDevice = physicalDevices[selectedDevice];
 
@@ -2134,6 +2187,85 @@ void VulkanExampleBase::handleEvent(const xcb_generic_event_t *event)
 		break;
 	}
 }
+#else
+GLFWwindow* VulkanExampleBase::setupWindow() {
+    glfwInit();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+    window = glfwCreateWindow(width, height, "", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetCursorPosCallback(window, cursorCallback);
+    glfwSetMouseButtonCallback(window, mouseBtnCallback);
+    glfwSetKeyCallback(window, keyCallback);
+    return window;
+}
+
+void VulkanExampleBase::processInput() {
+  camera.keys.up = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
+  camera.keys.down = (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
+  camera.keys.left = (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
+  camera.keys.right = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
+
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
+  }
+}
+
+void VulkanExampleBase::cursorCallback(GLFWwindow* window, double xpos, double ypos) {
+  auto app = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+  app->handleMouseMove(xpos, ypos);
+}
+
+void VulkanExampleBase::mouseBtnCallback(GLFWwindow* window, int button, int action, int mods) {
+  auto app = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+  switch (button) {
+    case GLFW_MOUSE_BUTTON_LEFT:
+      app->mouseButtons.left = (action == GLFW_PRESS);
+      break;
+    case GLFW_MOUSE_BUTTON_MIDDLE:
+      app->mouseButtons.middle = (action == GLFW_PRESS);
+      break;
+    case GLFW_MOUSE_BUTTON_RIGHT:
+      app->mouseButtons.right = (action == GLFW_PRESS);
+      break;
+    default:
+      // no-op
+      break;
+  }
+}
+
+void VulkanExampleBase::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+  auto app = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+  switch (key) {
+    case GLFW_KEY_P:
+      if (action == GLFW_PRESS) {
+        app->paused = !app->paused;
+      }
+      break;
+    case GLFW_KEY_F1:
+      if (action == GLFW_PRESS && app->settings.overlay) {
+        app->settings.overlay = !app->settings.overlay;
+      }
+      break;
+    default:
+      // no-op
+      break;
+  }
+
+  app->keyPressed(key);
+}
+
+void VulkanExampleBase::windowResizeCallback(GLFWwindow* window, int width, int height) {
+  auto app = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+  if ((app->prepared) && (width != app->width || height != app->height)) {
+    app->destWidth = width;
+    app->destHeight = height;
+    if ((app->destWidth > 0) && (app->destHeight > 0)) {
+      app->windowResize();
+    }
+  }
+}
 #endif
 
 void VulkanExampleBase::viewChanged() {}
@@ -2405,6 +2537,8 @@ void VulkanExampleBase::initSwapchain()
 	swapChain.initSurface(display, surface);
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
 	swapChain.initSurface(connection, window);
+#else
+	swapChain.initSurface(window);
 #endif
 }
 

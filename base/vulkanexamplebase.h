@@ -23,6 +23,9 @@
 //
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
 #include <xcb/xcb.h>
+#else
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #endif
 
 #include <stdio.h>
@@ -244,6 +247,8 @@ public:
 	xcb_screen_t *screen;
 	xcb_window_t window;
 	xcb_intern_atom_reply_t *atom_wm_delete_window;
+#else
+	GLFWwindow* window;
 #endif
 
 	VulkanExampleBase(bool enableValidation = false);
@@ -314,6 +319,13 @@ public:
 	xcb_window_t setupWindow();
 	void initxcbConnection();
 	void handleEvent(const xcb_generic_event_t *event);
+#else
+	GLFWwindow* setupWindow();
+	void processInput();
+    static void cursorCallback(GLFWwindow* window, double xpos, double ypos);
+    static void mouseBtnCallback(GLFWwindow* window, int button, int action, int mods);
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void windowResizeCallback(GLFWwindow* window, int width, int height);
 #endif
 	/** @brief (Virtual) Creates the application wide Vulkan instance */
 	virtual VkResult createInstance(bool enableValidation);
@@ -479,4 +491,18 @@ int main(const int argc, const char *argv[])														\
 #else
 #define VULKAN_EXAMPLE_MAIN()
 #endif
+#else
+#define VULKAN_EXAMPLE_MAIN()																		\
+VulkanExample *vulkanExample;																		\
+int main(const int argc, const char *argv[])													    \
+{																									\
+	for (size_t i = 0; i < argc; i++) { VulkanExample::args.push_back(argv[i]); };  				\
+	vulkanExample = new VulkanExample();															\
+	vulkanExample->setupWindow();					 												\
+	vulkanExample->initVulkan();																	\
+	vulkanExample->prepare();																		\
+	vulkanExample->renderLoop();																	\
+	delete(vulkanExample);																			\
+	return 0;																						\
+}
 #endif
