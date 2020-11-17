@@ -36,5 +36,5 @@ else (USE_NATIVE_WSI)
     add_library(base STATIC ${BASE_SRC})
     target_include_directories(base SYSTEM PUBLIC
             .)
-    target_link_libraries(base ${Vulkan_LIBRARIES} ktx glfw imgui ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(base ${Vulkan_LIBRARIES} ktx glfw glm::glm imgui ${CMAKE_THREAD_LIBS_INIT})
 endif (USE_NATIVE_WSI)
