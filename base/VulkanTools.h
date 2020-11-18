@@ -49,6 +49,8 @@ const std::string getAssetPath();
 
 namespace vks
 {
+    extern vk::DispatchLoaderDynamic dynamicDispatchLoader;
+
 	namespace tools
 	{
 		/** @brief Disable message boxes on fatal errors */

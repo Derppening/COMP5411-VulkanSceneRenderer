@@ -18,21 +18,21 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include "VulkanTools.h"
 
 typedef struct _SwapChainBuffers {
-	VkImage image;
-	VkImageView view;
+	vk::Image image;
+	vk::ImageView view;
 } SwapChainBuffer;
 
 class VulkanSwapChain
 {
 private: 
-	VkInstance instance;
-	VkDevice device;
-	VkPhysicalDevice physicalDevice;
-	VkSurfaceKHR surface;
+	vk::Instance instance;
+	vk::Device device;
+	vk::PhysicalDevice physicalDevice;
+	vk::SurfaceKHR surface;
 	// Function pointers
 	PFN_vkGetPhysicalDeviceSurfaceSupportKHR fpGetPhysicalDeviceSurfaceSupportKHR;
 	PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR fpGetPhysicalDeviceSurfaceCapabilitiesKHR; 
@@ -44,11 +44,11 @@ private:
 	PFN_vkAcquireNextImageKHR fpAcquireNextImageKHR;
 	PFN_vkQueuePresentKHR fpQueuePresentKHR;
 public:
-	VkFormat colorFormat;
-	VkColorSpaceKHR colorSpace;
-	VkSwapchainKHR swapChain = VK_NULL_HANDLE;	
+	vk::Format colorFormat;
+	vk::ColorSpaceKHR colorSpace;
+	vk::SwapchainKHR swapChain;
 	uint32_t imageCount;
-	std::vector<VkImage> images;
+	std::vector<vk::Image> images;
 	std::vector<SwapChainBuffer> buffers;
 	uint32_t queueNodeIndex = UINT32_MAX;
 
@@ -68,9 +68,9 @@ public:
 #else
 	void initSurface(GLFWwindow* window);
 #endif
-	void connect(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);
+	void connect(vk::Instance instance, vk::PhysicalDevice physicalDevice, vk::Device device);
 	void create(uint32_t* width, uint32_t* height, bool vsync = false);
-	VkResult acquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t* imageIndex);
-	VkResult queuePresent(VkQueue queue, uint32_t imageIndex, VkSemaphore waitSemaphore = VK_NULL_HANDLE);
+	vk::Result acquireNextImage(vk::Semaphore presentCompleteSemaphore, uint32_t* imageIndex);
+	vk::Result queuePresent(vk::Queue queue, uint32_t imageIndex, vk::Semaphore waitSemaphore = {});
 	void cleanup();
 };

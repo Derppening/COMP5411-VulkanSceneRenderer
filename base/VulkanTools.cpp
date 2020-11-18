@@ -19,6 +19,8 @@ const std::string getAssetPath()
 
 namespace vks
 {
+    vk::DispatchLoaderDynamic dynamicDispatchLoader{vkGetInstanceProcAddr};
+
 	namespace tools
 	{
 		bool errorModeSilent = false;

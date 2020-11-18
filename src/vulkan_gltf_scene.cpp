@@ -24,7 +24,7 @@ void vulkan_gltf_scene::load_images(tinygltf::Model& input) {
   images.resize(input.images.size());
   for (std::size_t i = 0; i < input.images.size(); ++i) {
     tinygltf::Image& gltf_image = input.images[i];
-    images[i].texture.loadFromFile(path + "/" + gltf_image.uri, VK_FORMAT_R8G8B8A8_UNORM, vulkan_device, copy_queue);
+    images[i].texture.loadFromFile(path + "/" + gltf_image.uri, vk::Format::eR8G8B8A8Unorm, vulkan_device, copy_queue);
   }
 }
 

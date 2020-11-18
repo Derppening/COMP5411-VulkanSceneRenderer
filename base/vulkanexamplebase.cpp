@@ -28,8 +28,7 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 	this->settings.validation = true;
 #endif
 
-	VkApplicationInfo appInfo = {};
-	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	vk::ApplicationInfo appInfo = {};
 	appInfo.pApplicationName = name.c_str();
 	appInfo.pEngineName = name.c_str();
 	appInfo.apiVersion = apiVersion;
@@ -58,18 +57,14 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 #endif
 
 	// Get extensions supported by the instance and store for later use
-	uint32_t extCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+    std::vector<vk::ExtensionProperties> extensions = vk::enumerateInstanceExtensionProperties();
+	uint32_t extCount = extensions.size();
 	if (extCount > 0)
 	{
-		std::vector<VkExtensionProperties> extensions(extCount);
-		if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
-		{
-			for (VkExtensionProperties extension : extensions)
-			{
-				supportedInstanceExtensions.push_back(extension.extensionName);
-			}
-		}
+        for (vk::ExtensionProperties extension : extensions)
+        {
+            supportedInstanceExtensions.push_back(extension.extensionName);
+        }
 	}
 
 	// Enabled requested instance extensions
@@ -86,8 +81,7 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 		}
 	}
 
-	VkInstanceCreateInfo instanceCreateInfo = {};
-	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	vk::InstanceCreateInfo instanceCreateInfo = {};
 	instanceCreateInfo.pNext = NULL;
 	instanceCreateInfo.pApplicationInfo = &appInfo;
 	if (instanceExtensions.size() > 0)
@@ -105,12 +99,10 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 		// Note that on Android this layer requires at least NDK r20
 		const char* validationLayerName = "VK_LAYER_KHRONOS_validation";
 		// Check if this layer is available at instance level
-		uint32_t instanceLayerCount;
-		vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-		std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerCount);
-		vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayerProperties.data());
+		std::vector<vk::LayerProperties> instanceLayerProperties = vk::enumerateInstanceLayerProperties();
+        uint32_t instanceLayerCount = instanceLayerProperties.size();
 		bool validationLayerPresent = false;
-		for (VkLayerProperties layer : instanceLayerProperties) {
+		for (vk::LayerProperties layer : instanceLayerProperties) {
 			if (strcmp(layer.layerName, validationLayerName) == 0) {
 				validationLayerPresent = true;
 				break;
@@ -156,7 +148,7 @@ void VulkanExampleBase::createCommandBuffers()
 	// Create one command buffer for each swap chain image and reuse for rendering
 	drawCmdBuffers.resize(swapChain.imageCount);
 
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+	vk::CommandBufferAllocateInfo cmdBufAllocateInfo =
 		vks::initializers::commandBufferAllocateInfo(
 			*cmdPool,
 			vk::CommandBufferLevel::ePrimary,
@@ -582,29 +574,32 @@ void VulkanExampleBase::drawUI(const vk::CommandBuffer commandBuffer)
 
 void VulkanExampleBase::prepareFrame()
 {
-	// Acquire the next image from the swap chain
-	VkResult result = swapChain.acquireNextImage(*semaphores.presentComplete, &currentBuffer);
-	// Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
-	if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
-		windowResize();
-	}
-	else {
-		VK_CHECK_RESULT(result);
-	}
+    try {
+        // Acquire the next image from the swap chain
+        vk::Result result = swapChain.acquireNextImage(*semaphores.presentComplete, &currentBuffer);
+        // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+        if (result == vk::Result::eSuboptimalKHR) {
+            windowResize();
+        } else if (result != vk::Result::eSuccess) {
+            VK_CHECK_RESULT(result);
+        }
+    } catch (const vk::OutOfDateKHRError&) {
+      windowResize();
+    }
 }
 
 void VulkanExampleBase::submitFrame()
 {
-	VkResult result = swapChain.queuePresent(queue, currentBuffer, *semaphores.renderComplete);
-	if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) {
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			// Swap chain is no longer compatible with the surface and needs to be recreated
-			windowResize();
-			return;
-		} else {
-			VK_CHECK_RESULT(result);
-		}
-	}
+    try {
+        vk::Result result = swapChain.queuePresent(queue, currentBuffer, *semaphores.renderComplete);
+        if (!((result == vk::Result::eSuccess) || (result == vk::Result::eSuboptimalKHR))) {
+            VK_CHECK_RESULT(result);
+        }
+    } catch (const vk::OutOfDateKHRError&) {
+      // Swap chain is no longer compatible with the surface and needs to be recreated
+      windowResize();
+      return;
+    }
 	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
 }
 
@@ -785,8 +780,6 @@ VulkanExampleBase::~VulkanExampleBase()
 
 bool VulkanExampleBase::initVulkan()
 {
-	VkResult err;
-
 	// Vulkan instance
 	try {
         createInstance(settings.validation);
@@ -794,15 +787,16 @@ bool VulkanExampleBase::initVulkan()
         vks::tools::exitFatal("Could not create Vulkan instance : \n" + err.code().message(), err.code().value());
         return false;
     }
+	vks::dynamicDispatchLoader.init(*instance);
 
 	// If requested, we enable the default validation layers for debugging
 	if (settings.validation)
 	{
 		// The report flags determine what type of messages for the layers will be displayed
 		// For validating (debugging) an application the error and warning bits should suffice
-		VkDebugReportFlagsEXT debugReportFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+		vk::DebugReportFlagsEXT debugReportFlags = vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning;
 		// Additional flags include performance info, loader and layer debug messages, etc.
-		vks::debug::setupDebugging(*instance, debugReportFlags, VK_NULL_HANDLE);
+		vks::debug::setupDebugging(*instance, debugReportFlags, {});
 	}
 
 	// Physical device
@@ -888,6 +882,7 @@ bool VulkanExampleBase::initVulkan()
 		return false;
 	}
 	device = *vulkanDevice->logicalDevice;
+	vks::dynamicDispatchLoader.init(device);
 
 	// Get a graphics queue from the device
 	queue = device.getQueue(vulkanDevice->queueFamilyIndices.graphics, 0);

@@ -28,15 +28,15 @@ class Texture
 {
   public:
 	vks::VulkanDevice *   device;
-	VkImage               image;
-	VkImageLayout         imageLayout;
-	VkDeviceMemory        deviceMemory;
-	VkImageView           view;
+	vk::Image               image;
+	vk::ImageLayout         imageLayout;
+	vk::DeviceMemory        deviceMemory;
+	vk::ImageView           view;
 	uint32_t              width, height;
 	uint32_t              mipLevels;
 	uint32_t              layerCount;
-	VkDescriptorImageInfo descriptor;
-	VkSampler             sampler;
+	vk::DescriptorImageInfo descriptor;
+	vk::Sampler             sampler;
 
 	void      updateDescriptor();
 	void      destroy();
@@ -48,23 +48,23 @@ class Texture2D : public Texture
   public:
 	void loadFromFile(
 	    std::string        filename,
-	    VkFormat           format,
+	    vk::Format           format,
 	    vks::VulkanDevice *device,
-	    VkQueue            copyQueue,
-	    VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VkImageLayout      imageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	    vk::Queue            copyQueue,
+	    vk::ImageUsageFlags  imageUsageFlags = vk::ImageUsageFlagBits::eSampled,
+	    vk::ImageLayout      imageLayout     = vk::ImageLayout::eShaderReadOnlyOptimal,
 	    bool               forceLinear     = false);
 	void fromBuffer(
 	    void *             buffer,
-	    VkDeviceSize       bufferSize,
-	    VkFormat           format,
+	    vk::DeviceSize       bufferSize,
+	    vk::Format           format,
 	    uint32_t           texWidth,
 	    uint32_t           texHeight,
 	    vks::VulkanDevice *device,
-	    VkQueue            copyQueue,
-	    VkFilter           filter          = VK_FILTER_LINEAR,
-	    VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VkImageLayout      imageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    vk::Queue            copyQueue,
+	    vk::Filter           filter          = vk::Filter::eLinear,
+	    vk::ImageUsageFlags  imageUsageFlags = vk::ImageUsageFlagBits::eSampled,
+	    vk::ImageLayout      imageLayout     = vk::ImageLayout::eShaderReadOnlyOptimal);
 };
 
 class Texture2DArray : public Texture
@@ -72,11 +72,11 @@ class Texture2DArray : public Texture
   public:
 	void loadFromFile(
 	    std::string        filename,
-	    VkFormat           format,
+	    vk::Format           format,
 	    vks::VulkanDevice *device,
-	    VkQueue            copyQueue,
-	    VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VkImageLayout      imageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    vk::Queue            copyQueue,
+	    vk::ImageUsageFlags  imageUsageFlags = vk::ImageUsageFlagBits::eSampled,
+	    vk::ImageLayout      imageLayout     = vk::ImageLayout::eShaderReadOnlyOptimal);
 };
 
 class TextureCubeMap : public Texture
@@ -84,10 +84,10 @@ class TextureCubeMap : public Texture
   public:
 	void loadFromFile(
 	    std::string        filename,
-	    VkFormat           format,
+	    vk::Format           format,
 	    vks::VulkanDevice *device,
-	    VkQueue            copyQueue,
-	    VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-	    VkImageLayout      imageLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    vk::Queue            copyQueue,
+	    vk::ImageUsageFlags  imageUsageFlags = vk::ImageUsageFlagBits::eSampled,
+	    vk::ImageLayout      imageLayout     = vk::ImageLayout::eShaderReadOnlyOptimal);
 };
 }        // namespace vks
