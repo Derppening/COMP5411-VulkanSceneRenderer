@@ -859,8 +859,7 @@ bool VulkanExampleBase::initVulkan()
 				std::cout << "Available Vulkan devices" << "\n";
 				std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
 				for (uint32_t j = 0; j < gpuCount; j++) {
-					VkPhysicalDeviceProperties deviceProperties;
-					vkGetPhysicalDeviceProperties(devices[j], &deviceProperties);
+					vk::PhysicalDeviceProperties deviceProperties = devices[j].getProperties();
 					std::cout << "Device [" << j << "] : " << deviceProperties.deviceName << std::endl;
 					std::cout << " Type: " << vks::tools::physicalDeviceTypeString(deviceProperties.deviceType) << "\n";
 					std::cout << " API: " << (deviceProperties.apiVersion >> 22) << "." << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.apiVersion & 0xfff) << "\n";
@@ -883,9 +882,9 @@ bool VulkanExampleBase::initVulkan()
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
 	vulkanDevice = std::make_unique<vks::VulkanDevice>(physicalDevice);
-	VkResult res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
-	if (res != VK_SUCCESS) {
-		vks::tools::exitFatal("Could not create Vulkan device: \n" + vks::tools::errorString(res), res);
+	vk::Result res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
+	if (res != vk::Result::eSuccess) {
+		vks::tools::exitFatal("Could not create Vulkan device: \n" + vks::tools::errorString(vk::Result(res)), res);
 		return false;
 	}
 	device = *vulkanDevice->logicalDevice;
@@ -2306,7 +2305,7 @@ void VulkanExampleBase::setupDepthStencil()
 
 	vk::MemoryAllocateInfo memAllloc{};
 	memAllloc.allocationSize = memReqs.size;
-	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 	depthStencil.mem = device.allocateMemoryUnique(memAllloc);
 	device.bindImageMemory(*depthStencil.image, *depthStencil.mem, 0);
 

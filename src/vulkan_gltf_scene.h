@@ -8,7 +8,7 @@
 class vulkan_gltf_scene {
  public:
   vks::VulkanDevice* vulkan_device;
-  VkQueue copy_queue;
+  vk::Queue copy_queue;
 
   struct vertex {
     glm::vec3 pos;
@@ -19,14 +19,14 @@ class vulkan_gltf_scene {
   };
 
   struct {
-    VkBuffer buffer;
-    VkDeviceMemory memory;
+    vk::Buffer buffer;
+    vk::DeviceMemory memory;
   } vertices;
 
   struct {
     int count;
-    VkBuffer buffer;
-    VkDeviceMemory memory;
+    vk::Buffer buffer;
+    vk::DeviceMemory memory;
   } indices;
 
   struct node;
@@ -57,8 +57,8 @@ class vulkan_gltf_scene {
     std::string alpha_mode = "OPAQUE";
     float alpha_cutoff;
     bool double_sided = false;
-    VkDescriptorSet descriptor_set;
-    VkPipeline pipeline;
+    vk::DescriptorSet descriptor_set;
+    vk::Pipeline pipeline;
   };
 
   struct image {
@@ -77,7 +77,7 @@ class vulkan_gltf_scene {
   std::string path;
 
   ~vulkan_gltf_scene();
-  VkDescriptorImageInfo get_texture_descriptor(std::size_t index);
+  vk::DescriptorImageInfo get_texture_descriptor(std::size_t index);
   void load_images(tinygltf::Model& input);
   void load_textures(tinygltf::Model& input);
   void load_materials(tinygltf::Model& input);
@@ -86,6 +86,6 @@ class vulkan_gltf_scene {
                  vulkan_gltf_scene::node* parent,
                  std::vector<std::uint32_t>& index_buffer,
                  std::vector<vulkan_gltf_scene::vertex>& vertex_buffer);
-  void draw_node(VkCommandBuffer command_buffer, VkPipelineLayout pipeline_layout, const vulkan_gltf_scene::node& node);
-  void draw(VkCommandBuffer command_buffer, VkPipelineLayout pipeline_layout);
+  void draw_node(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout, const vulkan_gltf_scene::node& node);
+  void draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout);
 };

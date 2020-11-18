@@ -23,52 +23,14 @@ namespace vks
 	{
 		bool errorModeSilent = false;
 
-		std::string errorString(VkResult errorCode)
+		std::string errorString(vk::Result errorCode)
 		{
-			switch (errorCode)
-			{
-#define STR(r) case VK_ ##r: return #r
-				STR(NOT_READY);
-				STR(TIMEOUT);
-				STR(EVENT_SET);
-				STR(EVENT_RESET);
-				STR(INCOMPLETE);
-				STR(ERROR_OUT_OF_HOST_MEMORY);
-				STR(ERROR_OUT_OF_DEVICE_MEMORY);
-				STR(ERROR_INITIALIZATION_FAILED);
-				STR(ERROR_DEVICE_LOST);
-				STR(ERROR_MEMORY_MAP_FAILED);
-				STR(ERROR_LAYER_NOT_PRESENT);
-				STR(ERROR_EXTENSION_NOT_PRESENT);
-				STR(ERROR_FEATURE_NOT_PRESENT);
-				STR(ERROR_INCOMPATIBLE_DRIVER);
-				STR(ERROR_TOO_MANY_OBJECTS);
-				STR(ERROR_FORMAT_NOT_SUPPORTED);
-				STR(ERROR_SURFACE_LOST_KHR);
-				STR(ERROR_NATIVE_WINDOW_IN_USE_KHR);
-				STR(SUBOPTIMAL_KHR);
-				STR(ERROR_OUT_OF_DATE_KHR);
-				STR(ERROR_INCOMPATIBLE_DISPLAY_KHR);
-				STR(ERROR_VALIDATION_FAILED_EXT);
-				STR(ERROR_INVALID_SHADER_NV);
-#undef STR
-			default:
-				return "UNKNOWN_ERROR";
-			}
+		    return vk::to_string(errorCode);
 		}
 
-		std::string physicalDeviceTypeString(VkPhysicalDeviceType type)
+		std::string physicalDeviceTypeString(vk::PhysicalDeviceType type)
 		{
-			switch (type)
-			{
-#define STR(r) case VK_PHYSICAL_DEVICE_TYPE_ ##r: return #r
-				STR(OTHER);
-				STR(INTEGRATED_GPU);
-				STR(DISCRETE_GPU);
-				STR(VIRTUAL_GPU);
-#undef STR
-			default: return "UNKNOWN_DEVICE_TYPE";
-			}
+		    return vk::to_string(type);
 		}
 
 		std::optional<vk::Format> getSupportedDepthFormat(vk::PhysicalDevice physicalDevice)
@@ -97,16 +59,15 @@ namespace vks
 		}
 
 		// Returns if a given format support LINEAR filtering
-		VkBool32 formatIsFilterable(VkPhysicalDevice physicalDevice, VkFormat format, VkImageTiling tiling)
+		vk::Bool32 formatIsFilterable(vk::PhysicalDevice physicalDevice, vk::Format format, vk::ImageTiling tiling)
 		{
-			VkFormatProperties formatProps;
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+			vk::FormatProperties formatProps = physicalDevice.getFormatProperties(format);
 
-			if (tiling == VK_IMAGE_TILING_OPTIMAL)
-				return formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+			if (tiling == vk::ImageTiling::eOptimal)
+				return vk::Bool32{formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
 
-			if (tiling == VK_IMAGE_TILING_LINEAR)
-				return formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+			if (tiling == vk::ImageTiling::eLinear)
+				return vk::Bool32{formatProps.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
 
 			return false;
 		}
@@ -116,16 +77,16 @@ namespace vks
 		// See chapter 11.4 "Image Layout" for details
 
 		void setImageLayout(
-			VkCommandBuffer cmdbuffer,
-			VkImage image,
-			VkImageLayout oldImageLayout,
-			VkImageLayout newImageLayout,
-			VkImageSubresourceRange subresourceRange,
-			VkPipelineStageFlags srcStageMask,
-			VkPipelineStageFlags dstStageMask)
+			vk::CommandBuffer cmdbuffer,
+			vk::Image image,
+			vk::ImageLayout oldImageLayout,
+			vk::ImageLayout newImageLayout,
+			vk::ImageSubresourceRange subresourceRange,
+			vk::PipelineStageFlags srcStageMask,
+			vk::PipelineStageFlags dstStageMask)
 		{
 			// Create an image barrier object
-			VkImageMemoryBarrier imageMemoryBarrier = vks::initializers::imageMemoryBarrier();
+			vk::ImageMemoryBarrier imageMemoryBarrier = vks::initializers::imageMemoryBarrier();
 			imageMemoryBarrier.oldLayout = oldImageLayout;
 			imageMemoryBarrier.newLayout = newImageLayout;
 			imageMemoryBarrier.image = image;
@@ -136,48 +97,48 @@ namespace vks
 			// before it will be transitioned to the new layout
 			switch (oldImageLayout)
 			{
-			case VK_IMAGE_LAYOUT_UNDEFINED:
+			case vk::ImageLayout::eUndefined:
 				// Image layout is undefined (or does not matter)
 				// Only valid as initial layout
 				// No flags required, listed only for completeness
-				imageMemoryBarrier.srcAccessMask = 0;
+				imageMemoryBarrier.srcAccessMask = {};
 				break;
 
-			case VK_IMAGE_LAYOUT_PREINITIALIZED:
+			case vk::ImageLayout::ePreinitialized:
 				// Image is preinitialized
 				// Only valid as initial layout for linear images, preserves memory contents
 				// Make sure host writes have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			case vk::ImageLayout::eColorAttachmentOptimal:
 				// Image is a color attachment
 				// Make sure any writes to the color buffer have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			case vk::ImageLayout::eDepthStencilAttachmentOptimal:
 				// Image is a depth/stencil attachment
 				// Make sure any writes to the depth/stencil buffer have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			case vk::ImageLayout::eTransferSrcOptimal:
 				// Image is a transfer source
 				// Make sure any reads from the image have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
 				break;
 
-			case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			case vk::ImageLayout::eTransferDstOptimal:
 				// Image is a transfer destination
 				// Make sure any writes to the image have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			case vk::ImageLayout::eShaderReadOnlyOptimal:
 				// Image is read by a shader
 				// Make sure any shader reads from the image have been finished
-				imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eShaderRead;
 				break;
 			default:
 				// Other source layouts aren't handled (yet)
@@ -188,38 +149,38 @@ namespace vks
 			// Destination access mask controls the dependency for the new image layout
 			switch (newImageLayout)
 			{
-			case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			case vk::ImageLayout::eTransferDstOptimal:
 				// Image will be used as a transfer destination
 				// Make sure any writes to the image have been finished
-				imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			case vk::ImageLayout::eTransferSrcOptimal:
 				// Image will be used as a transfer source
 				// Make sure any reads from the image have been finished
-				imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+				imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
 				break;
 
-			case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			case vk::ImageLayout::eColorAttachmentOptimal:
 				// Image will be used as a color attachment
 				// Make sure any writes to the color buffer have been finished
-				imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			case vk::ImageLayout::eDepthStencilAttachmentOptimal:
 				// Image layout will be used as a depth/stencil attachment
 				// Make sure any writes to depth/stencil buffer have been finished
-				imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 				break;
 
-			case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			case vk::ImageLayout::eShaderReadOnlyOptimal:
 				// Image will be read in a shader (sampler, input attachment)
 				// Make sure any writes to the image have been finished
-				if (imageMemoryBarrier.srcAccessMask == 0)
+				if (!imageMemoryBarrier.srcAccessMask)
 				{
-					imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+					imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite;
 				}
-				imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 				break;
 			default:
 				// Other source layouts aren't handled (yet)
@@ -227,27 +188,20 @@ namespace vks
 			}
 
 			// Put barrier inside setup command buffer
-			vkCmdPipelineBarrier(
-				cmdbuffer,
-				srcStageMask,
-				dstStageMask,
-				0,
-				0, nullptr,
-				0, nullptr,
-				1, &imageMemoryBarrier);
+			cmdbuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, {imageMemoryBarrier});
 		}
 
 		// Fixed sub resource on first mip level and layer
 		void setImageLayout(
-			VkCommandBuffer cmdbuffer,
-			VkImage image,
-			VkImageAspectFlags aspectMask,
-			VkImageLayout oldImageLayout,
-			VkImageLayout newImageLayout,
-			VkPipelineStageFlags srcStageMask,
-			VkPipelineStageFlags dstStageMask)
+			vk::CommandBuffer cmdbuffer,
+			vk::Image image,
+			vk::ImageAspectFlags aspectMask,
+			vk::ImageLayout oldImageLayout,
+			vk::ImageLayout newImageLayout,
+			vk::PipelineStageFlags srcStageMask,
+			vk::PipelineStageFlags dstStageMask)
 		{
-			VkImageSubresourceRange subresourceRange = {};
+			vk::ImageSubresourceRange subresourceRange = {};
 			subresourceRange.aspectMask = aspectMask;
 			subresourceRange.baseMipLevel = 0;
 			subresourceRange.levelCount = 1;
@@ -256,17 +210,17 @@ namespace vks
 		}
 
 		void insertImageMemoryBarrier(
-			VkCommandBuffer cmdbuffer,
-			VkImage image,
-			VkAccessFlags srcAccessMask,
-			VkAccessFlags dstAccessMask,
-			VkImageLayout oldImageLayout,
-			VkImageLayout newImageLayout,
-			VkPipelineStageFlags srcStageMask,
-			VkPipelineStageFlags dstStageMask,
-			VkImageSubresourceRange subresourceRange)
+			vk::CommandBuffer cmdbuffer,
+			vk::Image image,
+			vk::AccessFlags srcAccessMask,
+			vk::AccessFlags dstAccessMask,
+			vk::ImageLayout oldImageLayout,
+			vk::ImageLayout newImageLayout,
+			vk::PipelineStageFlags srcStageMask,
+			vk::PipelineStageFlags dstStageMask,
+			vk::ImageSubresourceRange subresourceRange)
 		{
-			VkImageMemoryBarrier imageMemoryBarrier = vks::initializers::imageMemoryBarrier();
+			vk::ImageMemoryBarrier imageMemoryBarrier = vks::initializers::imageMemoryBarrier();
 			imageMemoryBarrier.srcAccessMask = srcAccessMask;
 			imageMemoryBarrier.dstAccessMask = dstAccessMask;
 			imageMemoryBarrier.oldLayout = oldImageLayout;
@@ -274,14 +228,7 @@ namespace vks
 			imageMemoryBarrier.image = image;
 			imageMemoryBarrier.subresourceRange = subresourceRange;
 
-			vkCmdPipelineBarrier(
-				cmdbuffer,
-				srcStageMask,
-				dstStageMask,
-				0,
-				0, nullptr,
-				0, nullptr,
-				1, &imageMemoryBarrier);
+			cmdbuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, {imageMemoryBarrier});
 		}
 
 		void exitFatal(const std::string& message, int32_t exitCode)
@@ -295,7 +242,7 @@ namespace vks
 			exit(exitCode);
 		}
 
-		void exitFatal(const std::string& message, VkResult resultCode)
+		void exitFatal(const std::string& message, vk::Result resultCode)
 		{
 			exitFatal(message, (int32_t)resultCode);
 		}

@@ -19,12 +19,12 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     } values;
   } shader_data;
 
-  VkPipelineLayout pipeline_layout;
-  VkDescriptorSet descriptor_set;
+  vk::PipelineLayout pipeline_layout;
+  vk::DescriptorSet descriptor_set;
 
   struct descriptor_set_layouts {
-    VkDescriptorSetLayout matrices;
-    VkDescriptorSetLayout textures;
+    vk::DescriptorSetLayout matrices;
+    vk::DescriptorSetLayout textures;
   } descriptor_set_layouts;
 
   vulkan_scene_renderer();

@@ -25,7 +25,7 @@ namespace vks
 		uint32_t scale;
 
 		vks::VulkanDevice *device = nullptr;
-		VkQueue copyQueue = VK_NULL_HANDLE;
+		vk::Queue copyQueue;
 	public:
 		enum Topology { topologyTriangles, topologyQuads };
 
@@ -45,7 +45,7 @@ namespace vks
 		size_t indexBufferSize = 0;
 		uint32_t indexCount = 0;
 
-		HeightMap(vks::VulkanDevice *device, VkQueue copyQueue)
+		HeightMap(vks::VulkanDevice *device, vk::Queue copyQueue)
 		{
 			this->device = device;
 			this->copyQueue = copyQueue;
@@ -70,7 +70,7 @@ namespace vks
 		void loadFromFile(const std::string filename, uint32_t patchsize, glm::vec3 scale, Topology topology)
 		{
 			assert(device);
-			assert(copyQueue != VK_NULL_HANDLE);
+			assert(copyQueue);
 
 			ktxResult result;
 			ktxTexture* ktxTexture;
@@ -212,32 +212,22 @@ namespace vks
 				indexBufferSize);
 
 			// Copy from staging buffers
-			VkCommandBuffer copyCmd = device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+			vk::CommandBuffer copyCmd = device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
-			VkBufferCopy copyRegion = {};
+			vk::BufferCopy copyRegion = {};
 
 			copyRegion.size = vertexBufferSize;
-			vkCmdCopyBuffer(
-				copyCmd,
-				vertexStaging.buffer,
-				vertexBuffer.buffer,
-				1,
-				&copyRegion);
+			copyCmd.copyBuffer(*vertexStaging.buffer, *vertexBuffer.buffer, {copyRegion});
 
 			copyRegion.size = indexBufferSize;
-			vkCmdCopyBuffer(
-				copyCmd,
-				indexStaging.buffer,
-				indexBuffer.buffer,
-				1,
-				&copyRegion);
+			copyCmd.copyBuffer(*indexStaging.buffer, *indexBuffer.buffer, {copyRegion});
 
 			device->flushCommandBuffer(copyCmd, copyQueue, true);
 
-			vkDestroyBuffer(device->logicalDevice, vertexStaging.buffer, nullptr);
-			vkFreeMemory(device->logicalDevice, vertexStaging.memory, nullptr);
-			vkDestroyBuffer(device->logicalDevice, indexStaging.buffer, nullptr);
-			vkFreeMemory(device->logicalDevice, indexStaging.memory, nullptr);
+			vertexStaging.buffer.reset();
+			vertexStaging.memory.reset();
+			indexStaging.buffer.reset();
+			indexStaging.memory.reset();
 		}
 	};
 }

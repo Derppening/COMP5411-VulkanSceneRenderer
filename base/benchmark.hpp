@@ -19,7 +19,7 @@ namespace vks
 	class Benchmark {
 	private:
 		FILE *stream;
-		VkPhysicalDeviceProperties deviceProps;
+		vk::PhysicalDeviceProperties deviceProps;
 	public:
 		bool active = false;
 		bool outputFrameTimes = false;
@@ -31,7 +31,7 @@ namespace vks
 		double runtime = 0.0;
 		uint32_t frameCount = 0;
 
-		void run(std::function<void()> renderFunc, VkPhysicalDeviceProperties deviceProps) {
+		void run(std::function<void()> renderFunc, vk::PhysicalDeviceProperties deviceProps) {
 			active = true;
 			this->deviceProps = deviceProps;
 #if defined(_WIN32)

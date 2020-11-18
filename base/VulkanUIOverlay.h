@@ -30,9 +30,9 @@ namespace vks
 	{
 	public:
 		vks::VulkanDevice *device;
-		VkQueue queue;
+		vk::Queue queue;
 
-		VkSampleCountFlagBits rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		vk::SampleCountFlagBits rasterizationSamples = vk::SampleCountFlagBits::e1;
 		uint32_t subpass = 0;
 
 		vks::Buffer vertexBuffer;
@@ -40,18 +40,18 @@ namespace vks
 		int32_t vertexCount = 0;
 		int32_t indexCount = 0;
 
-		std::vector<VkPipelineShaderStageCreateInfo> shaders;
+		std::vector<vk::PipelineShaderStageCreateInfo> shaders;
 
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSetLayout descriptorSetLayout;
-		VkDescriptorSet descriptorSet;
-		VkPipelineLayout pipelineLayout;
-		VkPipeline pipeline;
+		vk::DescriptorPool descriptorPool;
+		vk::DescriptorSetLayout descriptorSetLayout;
+		vk::DescriptorSet descriptorSet;
+		vk::PipelineLayout pipelineLayout;
+		vk::Pipeline pipeline;
 
-		VkDeviceMemory fontMemory = VK_NULL_HANDLE;
-		VkImage fontImage = VK_NULL_HANDLE;
-		VkImageView fontView = VK_NULL_HANDLE;
-		VkSampler sampler;
+		vk::DeviceMemory fontMemory;
+		vk::Image fontImage;
+		vk::ImageView fontView;
+		vk::Sampler sampler;
 
 		struct PushConstBlock {
 			glm::vec2 scale;
@@ -65,11 +65,11 @@ namespace vks
 		UIOverlay();
 		~UIOverlay();
 
-		void preparePipeline(const VkPipelineCache pipelineCache, const VkRenderPass renderPass);
+		void preparePipeline(const vk::PipelineCache pipelineCache, const vk::RenderPass renderPass);
 		void prepareResources();
 
 		bool update();
-		void draw(const VkCommandBuffer commandBuffer);
+		void draw(const vk::CommandBuffer commandBuffer);
 		void resize(uint32_t width, uint32_t height);
 
 		void freeResources();

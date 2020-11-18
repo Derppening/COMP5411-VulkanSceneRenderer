@@ -220,12 +220,12 @@ void vulkan_gltf_scene::load_node(const tinygltf::Node& input_node,
   }
 }
 
-VkDescriptorImageInfo vulkan_gltf_scene::get_texture_descriptor(std::size_t index) {
+vk::DescriptorImageInfo vulkan_gltf_scene::get_texture_descriptor(std::size_t index) {
   return images[index].texture.descriptor;
 }
 
-void vulkan_gltf_scene::draw_node(VkCommandBuffer command_buffer,
-                                  VkPipelineLayout pipeline_layout,
+void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
+                                  vk::PipelineLayout pipeline_layout,
                                   const vulkan_gltf_scene::node& node) {
   if (!node.visible) {
     return;
@@ -246,7 +246,7 @@ void vulkan_gltf_scene::draw_node(VkCommandBuffer command_buffer,
         vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
         // POI: Bind the pipeline for the node's material
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipeline);
-        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &material.descriptor_set, 0, nullptr);
+        command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 1, {material.descriptor_set}, {});
         vkCmdDrawIndexed(command_buffer, primitive.index_count, 1, primitive.first_index, 0, 0);
       }
     }
@@ -256,10 +256,10 @@ void vulkan_gltf_scene::draw_node(VkCommandBuffer command_buffer,
   }
 }
 
-void vulkan_gltf_scene::draw(VkCommandBuffer command_buffer, VkPipelineLayout pipeline_layout) {
+void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout) {
   // All vertices and indices are stored in single buffers, so we only need to bind once
-  auto offsets = std::array<VkDeviceSize, 1>{{0}};
-  vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertices.buffer,  offsets.data());
+  auto offsets = std::array<vk::DeviceSize, 1>{{0}};
+  command_buffer.bindVertexBuffers(0, {vertices.buffer}, offsets);
   vkCmdBindIndexBuffer(command_buffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
