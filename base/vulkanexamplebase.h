@@ -52,8 +52,9 @@
 #include <string>
 #include <numeric>
 #include <array>
+#include <memory>
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 
 #include "keycodes.hpp"
 #include "VulkanTools.h"
@@ -96,59 +97,59 @@ protected:
 	uint32_t lastFPS = 0;
 	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
 	// Vulkan instance, stores all per-application states
-	VkInstance instance;
+	vk::UniqueInstance instance;
 	std::vector<std::string> supportedInstanceExtensions;
 	// Physical device (GPU) that Vulkan will use
-	VkPhysicalDevice physicalDevice;
+	vk::PhysicalDevice physicalDevice;
 	// Stores physical device properties (for e.g. checking device limits)
-	VkPhysicalDeviceProperties deviceProperties;
+	vk::PhysicalDeviceProperties deviceProperties;
 	// Stores the features available on the selected physical device (for e.g. checking if a feature is available)
-	VkPhysicalDeviceFeatures deviceFeatures;
+	vk::PhysicalDeviceFeatures deviceFeatures;
 	// Stores all available memory (type) properties for the physical device
-	VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+	vk::PhysicalDeviceMemoryProperties deviceMemoryProperties;
 	/** @brief Set of physical device features to be enabled for this example (must be set in the derived constructor) */
-	VkPhysicalDeviceFeatures enabledFeatures{};
+	vk::PhysicalDeviceFeatures enabledFeatures{};
 	/** @brief Set of device extensions to be enabled for this example (must be set in the derived constructor) */
 	std::vector<const char*> enabledDeviceExtensions;
 	std::vector<const char*> enabledInstanceExtensions;
 	/** @brief Optional pNext structure for passing extension structures to device creation */
 	void* deviceCreatepNextChain = nullptr;
 	/** @brief Logical device, application's view of the physical device (GPU) */
-	VkDevice device;
+	vk::Device device;
 	// Handle to the device graphics queue that command buffers are submitted to
-	VkQueue queue;
+	vk::Queue queue;
 	// Depth buffer format (selected during Vulkan initialization)
-	VkFormat depthFormat;
+	vk::Format depthFormat;
 	// Command buffer pool
-	VkCommandPool cmdPool;
+	vk::UniqueCommandPool cmdPool;
 	/** @brief Pipeline stages used to wait at for graphics queue submissions */
-	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	vk::PipelineStageFlags submitPipelineStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	// Contains command buffers and semaphores to be presented to the queue
-	VkSubmitInfo submitInfo;
+	vk::SubmitInfo submitInfo;
 	// Command buffers used for rendering
-	std::vector<VkCommandBuffer> drawCmdBuffers;
+	std::vector<vk::UniqueCommandBuffer> drawCmdBuffers;
 	// Global render pass for frame buffer writes
-	VkRenderPass renderPass;
+	vk::UniqueRenderPass renderPass;
 	// List of available frame buffers (same as number of swap chain images)
-	std::vector<VkFramebuffer>frameBuffers;
+	std::vector<vk::UniqueFramebuffer>frameBuffers;
 	// Active frame buffer index
 	uint32_t currentBuffer = 0;
 	// Descriptor set pool
-	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+	vk::UniqueDescriptorPool descriptorPool;
 	// List of shader modules created (stored for cleanup)
-	std::vector<VkShaderModule> shaderModules;
+	std::vector<vk::UniqueShaderModule> shaderModules;
 	// Pipeline cache object
-	VkPipelineCache pipelineCache;
+	vk::UniquePipelineCache pipelineCache;
 	// Wraps the swap chain to present images (framebuffers) to the windowing system
 	VulkanSwapChain swapChain;
 	// Synchronization semaphores
 	struct {
 		// Swap chain image presentation
-		VkSemaphore presentComplete;
+		vk::UniqueSemaphore presentComplete;
 		// Command buffer submission and execution
-		VkSemaphore renderComplete;
+		vk::UniqueSemaphore renderComplete;
 	} semaphores;
-	std::vector<VkFence> waitFences;
+	std::vector<vk::UniqueFence> waitFences;
 public:
 	bool prepared = false;
 	bool resized = false;
@@ -163,7 +164,7 @@ public:
 	vks::Benchmark benchmark;
 
 	/** @brief Encapsulated physical and logical vulkan device */
-	vks::VulkanDevice *vulkanDevice;
+	std::unique_ptr<vks::VulkanDevice> vulkanDevice;
 
 	/** @brief Example settings that can be changed e.g. by command line arguments */
 	struct Settings {
@@ -177,7 +178,7 @@ public:
 		bool overlay = false;
 	} settings;
 
-	VkClearColorValue defaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
+	vk::ClearColorValue defaultClearColor = { std::array{ 0.025f, 0.025f, 0.025f, 1.0f } };
 
 	static std::vector<const char*> args;
 
@@ -196,9 +197,9 @@ public:
 	uint32_t apiVersion = VK_API_VERSION_1_0;
 
 	struct {
-		VkImage image;
-		VkDeviceMemory mem;
-		VkImageView view;
+		vk::UniqueImage image;
+		vk::UniqueDeviceMemory mem;
+		vk::UniqueImageView view;
 	} depthStencil;
 
 	struct {
@@ -328,7 +329,7 @@ public:
     static void windowResizeCallback(GLFWwindow* window, int width, int height);
 #endif
 	/** @brief (Virtual) Creates the application wide Vulkan instance */
-	virtual VkResult createInstance(bool enableValidation);
+	virtual void createInstance(bool enableValidation);
 	/** @brief (Pure virtual) Render function to be implemented by the sample application */
 	virtual void render() = 0;
 	/** @brief (Virtual) Called when the camera view has changed */
@@ -354,13 +355,13 @@ public:
 	virtual void prepare();
 
 	/** @brief Loads a SPIR-V shader file for the given shader stage */
-	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
+	vk::PipelineShaderStageCreateInfo loadShader(std::string fileName, vk::ShaderStageFlagBits stage);
 
 	/** @brief Entry point for the main render loop */
 	void renderLoop();
 
 	/** @brief Adds the drawing commands for the ImGui overlay to the given command buffer */
-	void drawUI(const VkCommandBuffer commandBuffer);
+	void drawUI(const vk::CommandBuffer commandBuffer);
 
 	/** Prepare the next frame for workload submission by acquiring the next swap chain image */
 	void prepareFrame();

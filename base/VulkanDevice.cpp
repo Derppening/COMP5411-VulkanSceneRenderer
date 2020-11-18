@@ -518,7 +518,7 @@ namespace vks
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 		// Create fence to ensure that the command buffer has finished executing
-		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo(VK_FLAGS_NONE);
+		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo({});
 		VkFence fence;
 		VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &fence));
 		// Submit to the queue

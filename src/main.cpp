@@ -29,40 +29,40 @@ void vulkan_scene_renderer::getEnabledFeatures() {
 }
 
 void vulkan_scene_renderer::buildCommandBuffers() {
-  VkCommandBufferBeginInfo cmd_buf_info = vks::initializers::commandBufferBeginInfo();
+  vk::CommandBufferBeginInfo cmd_buf_info = vks::initializers::commandBufferBeginInfo();
 
-  VkClearValue clear_values[2];
+  std::array<vk::ClearValue, 2> clear_values;
   clear_values[0].color = defaultClearColor;
-  clear_values[0].color = {{0.25f, 0.25f, 0.25f, 1.0f } };;
-  clear_values[1].depthStencil = {1.0f, 0 };
+  clear_values[0].color = {std::array{0.25f, 0.25f, 0.25f, 1.0f }};
+  clear_values[1].depthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 
-  VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-  renderPassBeginInfo.renderPass = renderPass;
+  vk::RenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
+  renderPassBeginInfo.renderPass = *renderPass;
   renderPassBeginInfo.renderArea.offset.x = 0;
   renderPassBeginInfo.renderArea.offset.y = 0;
   renderPassBeginInfo.renderArea.extent.width = width;
   renderPassBeginInfo.renderArea.extent.height = height;
-  renderPassBeginInfo.clearValueCount = 2;
-  renderPassBeginInfo.pClearValues = clear_values;
+  renderPassBeginInfo.clearValueCount = clear_values.size();
+  renderPassBeginInfo.pClearValues = clear_values.data();
 
-  const VkViewport viewport = vks::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
-  const VkRect2D scissor = vks::initializers::rect2D(static_cast<std::int32_t>(width), static_cast<std::int32_t>(height), 0, 0);
+  const vk::Viewport viewport = vks::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
+  const vk::Rect2D scissor = vks::initializers::rect2D(static_cast<std::int32_t>(width), static_cast<std::int32_t>(height), 0, 0);
 
   for (std::size_t i = 0; i < drawCmdBuffers.size(); ++i) {
-    renderPassBeginInfo.framebuffer = frameBuffers[i];
-    VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmd_buf_info));
-    vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-    vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+    renderPassBeginInfo.framebuffer = *frameBuffers[i];
+    drawCmdBuffers[i]->begin(cmd_buf_info);
+    drawCmdBuffers[i]->beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+    drawCmdBuffers[i]->setViewport(0, {viewport});
+    drawCmdBuffers[i]->setScissor(0, {scissor});
     // Bind scene matrices descriptor to set 0
-    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, {descriptor_set}, {});
 
     // POI: Draw the glTF scene
-    gltf_scene.draw(drawCmdBuffers[i], pipeline_layout);
+    gltf_scene.draw(*drawCmdBuffers[i], pipeline_layout);
 
-    drawUI(drawCmdBuffers[i]);
-    vkCmdEndRenderPass(drawCmdBuffers[i]);
-    VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+    drawUI(*drawCmdBuffers[i]);
+    drawCmdBuffers[i]->endRenderPass();
+    drawCmdBuffers[i]->end();
   }
 }
 
@@ -76,7 +76,7 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
   bool file_loaded = gltf_context.LoadASCIIFromFile(&gltf_input, &error, &warning, filename);
 
   // Pass some Vulkan resources required for setup and rendering to the glTF model loading class
-  gltf_scene.vulkan_device = vulkanDevice;
+  gltf_scene.vulkan_device = vulkanDevice.get();
   gltf_scene.copy_queue = queue;
 
   std::size_t pos = filename.find_last_of('/');
@@ -183,14 +183,14 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // One ubo to pass dynamic data to the shader
   // Two combined image samplers per material as each material uses color and normal maps
-  std::vector<VkDescriptorPoolSize> pool_sizes = {
-      vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
-      vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
+  std::vector<vk::DescriptorPoolSize> pool_sizes = {
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
   };
   // One set for matrices and one per model image/texture
   const uint32_t max_set_count = static_cast<uint32_t>(gltf_scene.images.size()) + 1;
-  VkDescriptorPoolCreateInfo descriptor_pool_info = vks::initializers::descriptorPoolCreateInfo(pool_sizes, max_set_count);
-  VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptor_pool_info, nullptr, &descriptorPool));
+  vk::DescriptorPoolCreateInfo descriptor_pool_info = vks::initializers::descriptorPoolCreateInfo(pool_sizes, max_set_count);
+  descriptorPool = device.createDescriptorPoolUnique(descriptor_pool_info);
 
   // Descriptor set layout for passing matrices
   std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
@@ -222,14 +222,14 @@ void vulkan_scene_renderer::setup_descriptors() {
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCI, nullptr, &pipeline_layout));
 
   // Descriptor set for scene matrices
-  VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptor_set_layouts.matrices, 1);
+  VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &descriptor_set_layouts.matrices, 1);
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptor_set));
   VkWriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shader_data.buffer.descriptor);
   vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
 
   // Descriptor sets for materials
   for (auto& material : gltf_scene.materials) {
-    const VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptor_set_layouts.textures, 1);
+    const VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &descriptor_set_layouts.textures, 1);
     VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &material.descriptor_set));
     VkDescriptorImageInfo colorMap = gltf_scene.get_texture_descriptor(material.base_color_texture_index);
     VkDescriptorImageInfo normalMap = gltf_scene.get_texture_descriptor(material.normal_texture_index);
@@ -265,7 +265,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   };
   VkPipelineVertexInputStateCreateInfo vertexInputStateCI = vks::initializers::pipelineVertexInputStateCreateInfo(vertexInputBindings, vertexInputAttributes);
 
-  VkGraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(pipeline_layout, renderPass, 0);
+  VkGraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(pipeline_layout, *renderPass, 0);
   pipelineCI.pVertexInputState = &vertexInputStateCI;
   pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
   pipelineCI.pRasterizationState = &rasterizationStateCI;
@@ -277,8 +277,8 @@ void vulkan_scene_renderer::prepare_pipelines() {
   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
   pipelineCI.pStages = shaderStages.data();
 
-  shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-  shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+  shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
+  shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
 
   // POI: Instead if using a few fixed pipelines, we create one pipeline for each material using the properties of that material
   for (auto &material : gltf_scene.materials) {
@@ -302,7 +302,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
     // For double sided materials, culling will be disabled
     rasterizationStateCI.cullMode = material.double_sided ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
 
-    VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &material.pipeline));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, *pipelineCache, 1, &pipelineCI, nullptr, &material.pipeline));
   }
 }
 

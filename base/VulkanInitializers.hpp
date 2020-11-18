@@ -45,6 +45,18 @@ namespace vks
 			return commandBufferAllocateInfo;
 		}
 
+		inline vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
+			vk::CommandPool commandPool,
+			vk::CommandBufferLevel level,
+			uint32_t bufferCount)
+		{
+			vk::CommandBufferAllocateInfo commandBufferAllocateInfo {};
+			commandBufferAllocateInfo.commandPool = commandPool;
+			commandBufferAllocateInfo.level = level;
+			commandBufferAllocateInfo.commandBufferCount = bufferCount;
+			return commandBufferAllocateInfo;
+		}
+
 		inline VkCommandPoolCreateInfo commandPoolCreateInfo()
 		{
 			VkCommandPoolCreateInfo cmdPoolCreateInfo {};
@@ -52,10 +64,9 @@ namespace vks
 			return cmdPoolCreateInfo;
 		}
 
-		inline VkCommandBufferBeginInfo commandBufferBeginInfo()
+		inline vk::CommandBufferBeginInfo commandBufferBeginInfo()
 		{
-			VkCommandBufferBeginInfo cmdBufferBeginInfo {};
-			cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			vk::CommandBufferBeginInfo cmdBufferBeginInfo {};
 			return cmdBufferBeginInfo;
 		}
 
@@ -66,10 +77,9 @@ namespace vks
 			return cmdBufferInheritanceInfo;
 		}
 
-		inline VkRenderPassBeginInfo renderPassBeginInfo()
+		inline vk::RenderPassBeginInfo renderPassBeginInfo()
 		{
-			VkRenderPassBeginInfo renderPassBeginInfo {};
-			renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			vk::RenderPassBeginInfo renderPassBeginInfo {};
 			return renderPassBeginInfo;
 		}
 
@@ -136,17 +146,15 @@ namespace vks
 			return framebufferCreateInfo;
 		}
 
-		inline VkSemaphoreCreateInfo semaphoreCreateInfo()
+		inline vk::SemaphoreCreateInfo semaphoreCreateInfo()
 		{
-			VkSemaphoreCreateInfo semaphoreCreateInfo {};
-			semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+			vk::SemaphoreCreateInfo semaphoreCreateInfo {};
 			return semaphoreCreateInfo;
 		}
 
-		inline VkFenceCreateInfo fenceCreateInfo(VkFenceCreateFlags flags = 0)
+		inline vk::FenceCreateInfo fenceCreateInfo(vk::FenceCreateFlags flags = {})
 		{
-			VkFenceCreateInfo fenceCreateInfo {};
-			fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			vk::FenceCreateInfo fenceCreateInfo {};
 			fenceCreateInfo.flags = flags;
 			return fenceCreateInfo;
 		}
@@ -158,20 +166,19 @@ namespace vks
 			return eventCreateInfo;
 		}
 
-		inline VkSubmitInfo submitInfo()
+		inline vk::SubmitInfo submitInfo()
 		{
-			VkSubmitInfo submitInfo {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			vk::SubmitInfo submitInfo {};
 			return submitInfo;
 		}
 
-		inline VkViewport viewport(
+		inline vk::Viewport viewport(
 			float width,
 			float height,
 			float minDepth,
 			float maxDepth)
 		{
-			VkViewport viewport {};
+			vk::Viewport viewport {};
 			viewport.width = width;
 			viewport.height = height;
 			viewport.minDepth = minDepth;
@@ -179,13 +186,13 @@ namespace vks
 			return viewport;
 		}
 
-		inline VkRect2D rect2D(
+		inline vk::Rect2D rect2D(
 			int32_t width,
 			int32_t height,
 			int32_t offsetX,
 			int32_t offsetY)
 		{
-			VkRect2D rect2D {};
+			vk::Rect2D rect2D {};
 			rect2D.extent.width = width;
 			rect2D.extent.height = height;
 			rect2D.offset.x = offsetX;
@@ -224,23 +231,22 @@ namespace vks
 			return descriptorPoolInfo;
 		}
 
-		inline VkDescriptorPoolCreateInfo descriptorPoolCreateInfo(
-			const std::vector<VkDescriptorPoolSize>& poolSizes,
+		inline vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo(
+			const std::vector<vk::DescriptorPoolSize>& poolSizes,
 			uint32_t maxSets)
 		{
-			VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-			descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			vk::DescriptorPoolCreateInfo descriptorPoolInfo{};
 			descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 			descriptorPoolInfo.pPoolSizes = poolSizes.data();
 			descriptorPoolInfo.maxSets = maxSets;
 			return descriptorPoolInfo;
 		}
 
-		inline VkDescriptorPoolSize descriptorPoolSize(
-			VkDescriptorType type,
+		inline vk::DescriptorPoolSize descriptorPoolSize(
+			vk::DescriptorType type,
 			uint32_t descriptorCount)
 		{
-			VkDescriptorPoolSize descriptorPoolSize {};
+			vk::DescriptorPoolSize descriptorPoolSize {};
 			descriptorPoolSize.type = type;
 			descriptorPoolSize.descriptorCount = descriptorCount;
 			return descriptorPoolSize;

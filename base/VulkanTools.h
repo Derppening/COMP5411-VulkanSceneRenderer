@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 #include "VulkanInitializers.hpp"
 
 #include <math.h>
@@ -22,6 +22,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <fstream>
+#include <optional>
 #if defined(_WIN32)
 #include <windows.h>
 #include <fcntl.h>
@@ -61,7 +62,7 @@ namespace vks
 
 		// Selected a suitable supported depth format starting with 32 bit down to 16 bit
 		// Returns false if none of the depth formats in the list is supported by the device
-		VkBool32 getSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat);
+        std::optional<vk::Format> getSupportedDepthFormat(vk::PhysicalDevice physicalDevice);
 
 		// Returns if a given format support LINEAR filtering
 		VkBool32 formatIsFilterable(VkPhysicalDevice physicalDevice, VkFormat format, VkImageTiling tiling);
@@ -102,7 +103,7 @@ namespace vks
 		void exitFatal(const std::string& message, VkResult resultCode);
 
 		// Load a SPIR-V shader (binary)
-		VkShaderModule loadShader(const char *fileName, VkDevice device);
+		vk::UniqueShaderModule loadShader(const char *fileName, vk::Device device);
 
 		/** @brief Checks if a file exists */
 		bool fileExists(const std::string &filename);

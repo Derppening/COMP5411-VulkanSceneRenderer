@@ -71,31 +71,29 @@ namespace vks
 			}
 		}
 
-		VkBool32 getSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat)
+		std::optional<vk::Format> getSupportedDepthFormat(vk::PhysicalDevice physicalDevice)
 		{
 			// Since all depth formats may be optional, we need to find a suitable depth format to use
 			// Start with the highest precision packed format
-			std::vector<VkFormat> depthFormats = {
-				VK_FORMAT_D32_SFLOAT_S8_UINT,
-				VK_FORMAT_D32_SFLOAT,
-				VK_FORMAT_D24_UNORM_S8_UINT,
-				VK_FORMAT_D16_UNORM_S8_UINT,
-				VK_FORMAT_D16_UNORM
+			std::vector<vk::Format> depthFormats = {
+				vk::Format::eD32SfloatS8Uint,
+				vk::Format::eD32Sfloat,
+				vk::Format::eD24UnormS8Uint,
+				vk::Format::eD16UnormS8Uint,
+				vk::Format::eD16Unorm
 			};
 
 			for (auto& format : depthFormats)
 			{
-				VkFormatProperties formatProps;
-				vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProps);
+				vk::FormatProperties formatProps = physicalDevice.getFormatProperties(format);
 				// Format must support depth stencil attachment for optimal tiling
-				if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+				if (formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
 				{
-					*depthFormat = format;
-					return true;
+					return std::make_optional(format);
 				}
 			}
 
-			return false;
+			return std::nullopt;
 		}
 
 		// Returns if a given format support LINEAR filtering
@@ -302,7 +300,7 @@ namespace vks
 			exitFatal(message, (int32_t)resultCode);
 		}
 
-		VkShaderModule loadShader(const char *fileName, VkDevice device)
+		vk::UniqueShaderModule loadShader(const char *fileName, vk::Device device)
 		{
 			std::ifstream is(fileName, std::ios::binary | std::ios::in | std::ios::ate);
 
@@ -310,28 +308,27 @@ namespace vks
 			{
 				size_t size = is.tellg();
 				is.seekg(0, std::ios::beg);
-				char* shaderCode = new char[size];
-				is.read(shaderCode, size);
+				auto shaderCode = std::make_unique<char[]>(size);
+				is.read(shaderCode.get(), size);
 				is.close();
 
 				assert(size > 0);
 
-				VkShaderModule shaderModule;
-				VkShaderModuleCreateInfo moduleCreateInfo{};
-				moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				vk::UniqueShaderModule shaderModule;
+				vk::ShaderModuleCreateInfo moduleCreateInfo{};
 				moduleCreateInfo.codeSize = size;
-				moduleCreateInfo.pCode = (uint32_t*)shaderCode;
+				moduleCreateInfo.pCode = (uint32_t*)shaderCode.get();
 
-				VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+				shaderModule = device.createShaderModuleUnique(moduleCreateInfo);
 
-				delete[] shaderCode;
+				shaderCode.reset();
 
 				return shaderModule;
 			}
 			else
 			{
 				std::cerr << "Error: Could not open shader file \"" << fileName << "\"" << "\n";
-				return VK_NULL_HANDLE;
+				return {};
 			}
 		}
 
