@@ -22,9 +22,9 @@ namespace vks
 struct VulkanDevice
 {
 	/** @brief Physical device representation */
-	VkPhysicalDevice physicalDevice;
+	vk::PhysicalDevice physicalDevice;
 	/** @brief Logical device representation (application's view of the device) */
-	VkDevice logicalDevice;
+	vk::UniqueDevice logicalDevice;
 	/** @brief Properties of the physical device including limits that the application can check against */
 	VkPhysicalDeviceProperties properties;
 	/** @brief Features of the physical device that an application can use to check if a feature is supported */
@@ -50,7 +50,7 @@ struct VulkanDevice
 	} queueFamilyIndices;
 	operator VkDevice() const
 	{
-		return logicalDevice;
+		return *logicalDevice;
 	};
 	explicit VulkanDevice(VkPhysicalDevice physicalDevice);
 	~VulkanDevice();

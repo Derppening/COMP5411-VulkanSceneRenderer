@@ -888,7 +888,7 @@ bool VulkanExampleBase::initVulkan()
 		vks::tools::exitFatal("Could not create Vulkan device: \n" + vks::tools::errorString(res), res);
 		return false;
 	}
-	device = vulkanDevice->logicalDevice;
+	device = *vulkanDevice->logicalDevice;
 
 	// Get a graphics queue from the device
 	queue = device.getQueue(vulkanDevice->queueFamilyIndices.graphics, 0);

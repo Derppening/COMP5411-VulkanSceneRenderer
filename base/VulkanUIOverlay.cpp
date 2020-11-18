@@ -68,14 +68,14 @@ namespace vks
 		imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageInfo, nullptr, &fontImage));
+		VK_CHECK_RESULT(vkCreateImage(*device->logicalDevice, &imageInfo, nullptr, &fontImage));
 		VkMemoryRequirements memReqs;
-		vkGetImageMemoryRequirements(device->logicalDevice, fontImage, &memReqs);
+		vkGetImageMemoryRequirements(*device->logicalDevice, fontImage, &memReqs);
 		VkMemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
 		memAllocInfo.allocationSize = memReqs.size;
 		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		VK_CHECK_RESULT(vkAllocateMemory(device->logicalDevice, &memAllocInfo, nullptr, &fontMemory));
-		VK_CHECK_RESULT(vkBindImageMemory(device->logicalDevice, fontImage, fontMemory, 0));
+		VK_CHECK_RESULT(vkAllocateMemory(*device->logicalDevice, &memAllocInfo, nullptr, &fontMemory));
+		VK_CHECK_RESULT(vkBindImageMemory(*device->logicalDevice, fontImage, fontMemory, 0));
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = vks::initializers::imageViewCreateInfo();
@@ -85,7 +85,7 @@ namespace vks
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		viewInfo.subresourceRange.levelCount = 1;
 		viewInfo.subresourceRange.layerCount = 1;
-		VK_CHECK_RESULT(vkCreateImageView(device->logicalDevice, &viewInfo, nullptr, &fontView));
+		VK_CHECK_RESULT(vkCreateImageView(*device->logicalDevice, &viewInfo, nullptr, &fontView));
 
 		// Staging buffers for font data upload
 		vks::Buffer stagingBuffer;
@@ -123,7 +123,7 @@ namespace vks
 
 		vkCmdCopyBufferToImage(
 			copyCmd,
-			stagingBuffer.buffer,
+			*stagingBuffer.buffer,
 			fontImage,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1,
@@ -153,25 +153,25 @@ namespace vks
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-		VK_CHECK_RESULT(vkCreateSampler(device->logicalDevice, &samplerInfo, nullptr, &sampler));
+		VK_CHECK_RESULT(vkCreateSampler(*device->logicalDevice, &samplerInfo, nullptr, &sampler));
 
 		// Descriptor pool
 		std::vector<vk::DescriptorPoolSize> poolSizes = {
 			vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 1)
 		};
 		VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 2);
-		VK_CHECK_RESULT(vkCreateDescriptorPool(device->logicalDevice, &descriptorPoolInfo, nullptr, &descriptorPool));
+		VK_CHECK_RESULT(vkCreateDescriptorPool(*device->logicalDevice, &descriptorPoolInfo, nullptr, &descriptorPool));
 
 		// Descriptor set layout
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
 			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0),
 		};
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
-		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->logicalDevice, &descriptorLayout, nullptr, &descriptorSetLayout));
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(*device->logicalDevice, &descriptorLayout, nullptr, &descriptorSetLayout));
 
 		// Descriptor set
 		VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(device->logicalDevice, &allocInfo, &descriptorSet));
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(*device->logicalDevice, &allocInfo, &descriptorSet));
 		VkDescriptorImageInfo fontDescriptor = vks::initializers::descriptorImageInfo(
 			sampler,
 			fontView,
@@ -180,7 +180,7 @@ namespace vks
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
 			vks::initializers::writeDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &fontDescriptor)
 		};
-		vkUpdateDescriptorSets(device->logicalDevice, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+		vkUpdateDescriptorSets(*device->logicalDevice, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 	}
 
 	/** Prepare a separate pipeline for the UI overlay rendering decoupled from the main application */
@@ -192,7 +192,7 @@ namespace vks
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-		VK_CHECK_RESULT(vkCreatePipelineLayout(device->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+		VK_CHECK_RESULT(vkCreatePipelineLayout(*device->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
 		// Setup graphics pipeline for UI rendering
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
@@ -261,7 +261,7 @@ namespace vks
 
 		pipelineCreateInfo.pVertexInputState = &vertexInputState;
 
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device->logicalDevice, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*device->logicalDevice, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
 	}
 
 	/** Update vertex and index buffer containing the imGui elements when required */
@@ -282,7 +282,7 @@ namespace vks
 		}
 
 		// Vertex buffer
-		if ((vertexBuffer.buffer == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount)) {
+		if ((vertexBuffer.buffer) || (vertexCount != imDrawData->TotalVtxCount)) {
 			vertexBuffer.unmap();
 			vertexBuffer.destroy();
 			VK_CHECK_RESULT(device->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &vertexBuffer, vertexBufferSize));
@@ -294,7 +294,7 @@ namespace vks
 
 		// Index buffer
 		VkDeviceSize indexSize = imDrawData->TotalIdxCount * sizeof(ImDrawIdx);
-		if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < imDrawData->TotalIdxCount)) {
+		if ((indexBuffer.buffer) || (indexCount < imDrawData->TotalIdxCount)) {
 			indexBuffer.unmap();
 			indexBuffer.destroy();
 			VK_CHECK_RESULT(device->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &indexBuffer, indexBufferSize));
@@ -342,8 +342,9 @@ namespace vks
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstBlock), &pushConstBlock);
 
 		VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.buffer, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+		VkBuffer vertexBufferBuffer = VkBuffer(*vertexBuffer.buffer);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBufferBuffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, *indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
 
 		for (int32_t i = 0; i < imDrawData->CmdListsCount; i++)
 		{
@@ -375,14 +376,14 @@ namespace vks
 		ImGui::DestroyContext();
 		vertexBuffer.destroy();
 		indexBuffer.destroy();
-		vkDestroyImageView(device->logicalDevice, fontView, nullptr);
-		vkDestroyImage(device->logicalDevice, fontImage, nullptr);
-		vkFreeMemory(device->logicalDevice, fontMemory, nullptr);
-		vkDestroySampler(device->logicalDevice, sampler, nullptr);
-		vkDestroyDescriptorSetLayout(device->logicalDevice, descriptorSetLayout, nullptr);
-		vkDestroyDescriptorPool(device->logicalDevice, descriptorPool, nullptr);
-		vkDestroyPipelineLayout(device->logicalDevice, pipelineLayout, nullptr);
-		vkDestroyPipeline(device->logicalDevice, pipeline, nullptr);
+		vkDestroyImageView(*device->logicalDevice, fontView, nullptr);
+		vkDestroyImage(*device->logicalDevice, fontImage, nullptr);
+		vkFreeMemory(*device->logicalDevice, fontMemory, nullptr);
+		vkDestroySampler(*device->logicalDevice, sampler, nullptr);
+		vkDestroyDescriptorSetLayout(*device->logicalDevice, descriptorSetLayout, nullptr);
+		vkDestroyDescriptorPool(*device->logicalDevice, descriptorPool, nullptr);
+		vkDestroyPipelineLayout(*device->logicalDevice, pipelineLayout, nullptr);
+		vkDestroyPipeline(*device->logicalDevice, pipeline, nullptr);
 	}
 
 	bool UIOverlay::header(const char *caption)

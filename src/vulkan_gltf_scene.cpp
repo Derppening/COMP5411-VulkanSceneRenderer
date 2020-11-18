@@ -4,18 +4,18 @@
 
 vulkan_gltf_scene::~vulkan_gltf_scene() {
   // Release all Vulkan resources allocated for the model
-  vkDestroyBuffer(vulkan_device->logicalDevice, vertices.buffer, nullptr);
-  vkFreeMemory(vulkan_device->logicalDevice, vertices.memory, nullptr);
-  vkDestroyBuffer(vulkan_device->logicalDevice, indices.buffer, nullptr);
-  vkFreeMemory(vulkan_device->logicalDevice, indices.memory, nullptr);
+  vkDestroyBuffer(*vulkan_device->logicalDevice, vertices.buffer, nullptr);
+  vkFreeMemory(*vulkan_device->logicalDevice, vertices.memory, nullptr);
+  vkDestroyBuffer(*vulkan_device->logicalDevice, indices.buffer, nullptr);
+  vkFreeMemory(*vulkan_device->logicalDevice, indices.memory, nullptr);
   for (vulkan_gltf_scene::image image : images) {
-    vkDestroyImageView(vulkan_device->logicalDevice, image.texture.view, nullptr);
-    vkDestroyImage(vulkan_device->logicalDevice, image.texture.image, nullptr);
-    vkDestroySampler(vulkan_device->logicalDevice, image.texture.sampler, nullptr);
-    vkFreeMemory(vulkan_device->logicalDevice, image.texture.deviceMemory, nullptr);
+    vkDestroyImageView(*vulkan_device->logicalDevice, image.texture.view, nullptr);
+    vkDestroyImage(*vulkan_device->logicalDevice, image.texture.image, nullptr);
+    vkDestroySampler(*vulkan_device->logicalDevice, image.texture.sampler, nullptr);
+    vkFreeMemory(*vulkan_device->logicalDevice, image.texture.deviceMemory, nullptr);
   }
   for (vulkan_gltf_scene::material& material : materials) {
-    vkDestroyPipeline(vulkan_device->logicalDevice, material.pipeline, nullptr);
+    vkDestroyPipeline(*vulkan_device->logicalDevice, material.pipeline, nullptr);
   }
 }
 

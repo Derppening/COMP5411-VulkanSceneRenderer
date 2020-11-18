@@ -62,12 +62,9 @@ namespace vks
 	{
 		if (commandPool)
 		{
-			vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+			vkDestroyCommandPool(*logicalDevice, commandPool, nullptr);
 		}
-		if (logicalDevice)
-		{
-			vkDestroyDevice(logicalDevice, nullptr);
-		}
+		logicalDevice.reset();
 	}
 
 	/**
@@ -286,16 +283,12 @@ namespace vks
 
 		this->enabledFeatures = enabledFeatures;
 
-		VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
-		if (result != VK_SUCCESS) 
-		{
-			return result;
-		}
+		logicalDevice = physicalDevice.createDeviceUnique(deviceCreateInfo);
 
 		// Create a default command pool for graphics command buffers
 		commandPool = createCommandPool(queueFamilyIndices.graphics);
 
-		return result;
+		return VK_SUCCESS;  // TODO
 	}
 
 	/**
@@ -315,12 +308,12 @@ namespace vks
 		// Create the buffer handle
 		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(*logicalDevice, &bufferCreateInfo, nullptr, buffer));
 
 		// Create the memory backing up the buffer handle
 		VkMemoryRequirements memReqs;
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
+		vkGetBufferMemoryRequirements(*logicalDevice, *buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
 		// Find a memory type index that fits the properties of the buffer
 		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
@@ -331,13 +324,13 @@ namespace vks
 			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
 			memAlloc.pNext = &allocFlagsInfo;
 		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
+		VK_CHECK_RESULT(vkAllocateMemory(*logicalDevice, &memAlloc, nullptr, memory));
 			
 		// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 		if (data != nullptr)
 		{
 			void *mapped;
-			VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
+			VK_CHECK_RESULT(vkMapMemory(*logicalDevice, *memory, 0, size, 0, &mapped));
 			memcpy(mapped, data, size);
 			// If host coherency hasn't been requested, do a manual flush to make writes visible
 			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
@@ -346,13 +339,13 @@ namespace vks
 				mappedRange.memory = *memory;
 				mappedRange.offset = 0;
 				mappedRange.size = size;
-				vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
+				vkFlushMappedMemoryRanges(*logicalDevice, 1, &mappedRange);
 			}
-			vkUnmapMemory(logicalDevice, *memory);
+			vkUnmapMemory(*logicalDevice, *memory);
 		}
 
 		// Attach the memory to the buffer object
-		VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
+		VK_CHECK_RESULT(vkBindBufferMemory(*logicalDevice, *buffer, *memory, 0));
 
 		return VK_SUCCESS;
 	}
@@ -370,16 +363,16 @@ namespace vks
 	*/
 	VkResult VulkanDevice::createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, VkDeviceSize size, void *data)
 	{
-		buffer->device = logicalDevice;
+		buffer->device = *logicalDevice;
 
 		// Create the buffer handle
 		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
+		buffer->buffer = logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Create the memory backing up the buffer handle
 		VkMemoryRequirements memReqs;
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, buffer->buffer, &memReqs);
+		vkGetBufferMemoryRequirements(*logicalDevice, *buffer->buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
 		// Find a memory type index that fits the properties of the buffer
 		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
@@ -390,17 +383,17 @@ namespace vks
 			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
 			memAlloc.pNext = &allocFlagsInfo;
 		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, &buffer->memory));
+		buffer->memory = logicalDevice->allocateMemoryUnique(memAlloc);
 
 		buffer->alignment = memReqs.alignment;
 		buffer->size = size;
-		buffer->usageFlags = usageFlags;
-		buffer->memoryPropertyFlags = memoryPropertyFlags;
+		buffer->usageFlags = vk::BufferUsageFlags(usageFlags);
+		buffer->memoryPropertyFlags = vk::MemoryPropertyFlags(memoryPropertyFlags);
 
 		// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 		if (data != nullptr)
 		{
-			VK_CHECK_RESULT(buffer->map());
+			buffer->map();
 			memcpy(buffer->mapped, data, size);
 			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
 				buffer->flush();
@@ -412,7 +405,8 @@ namespace vks
 		buffer->setupDescriptor();
 
 		// Attach the memory to the buffer object
-		return buffer->bind();
+		buffer->bind();
+		return VK_SUCCESS; // TODO
 	}
 
 	/**
@@ -440,7 +434,7 @@ namespace vks
 			bufferCopy = *copyRegion;
 		}
 
-		vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
+		vkCmdCopyBuffer(copyCmd, *src->buffer, *dst->buffer, 1, &bufferCopy);
 
 		flushCommandBuffer(copyCmd, queue);
 	}
@@ -462,7 +456,7 @@ namespace vks
 		cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
 		cmdPoolInfo.flags = createFlags;
 		VkCommandPool cmdPool;
-		VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
+		VK_CHECK_RESULT(vkCreateCommandPool(*logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
 		return cmdPool;
 	}
 
@@ -479,7 +473,7 @@ namespace vks
 	{
 		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(pool, level, 1);
 		VkCommandBuffer cmdBuffer;
-		VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
+		VK_CHECK_RESULT(vkAllocateCommandBuffers(*logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
 		// If requested, also start recording for the new command buffer
 		if (begin)
 		{
@@ -520,15 +514,15 @@ namespace vks
 		// Create fence to ensure that the command buffer has finished executing
 		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo({});
 		VkFence fence;
-		VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &fence));
+		VK_CHECK_RESULT(vkCreateFence(*logicalDevice, &fenceInfo, nullptr, &fence));
 		// Submit to the queue
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
 		// Wait for the fence to signal that command buffer has finished executing
-		VK_CHECK_RESULT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-		vkDestroyFence(logicalDevice, fence, nullptr);
+		VK_CHECK_RESULT(vkWaitForFences(*logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+		vkDestroyFence(*logicalDevice, fence, nullptr);
 		if (free)
 		{
-			vkFreeCommandBuffers(logicalDevice, pool, 1, &commandBuffer);
+			vkFreeCommandBuffers(*logicalDevice, pool, 1, &commandBuffer);
 		}
 	}
 

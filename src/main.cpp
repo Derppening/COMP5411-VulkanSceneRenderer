@@ -224,7 +224,8 @@ void vulkan_scene_renderer::setup_descriptors() {
   // Descriptor set for scene matrices
   VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &descriptor_set_layouts.matrices, 1);
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptor_set));
-  VkWriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shader_data.buffer.descriptor);
+  VkDescriptorBufferInfo shader_data_buffer_descriptor = shader_data.buffer.descriptor;
+  VkWriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shader_data_buffer_descriptor);
   vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
 
   // Descriptor sets for materials
@@ -312,7 +313,7 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
       &shader_data.buffer,
       sizeof(shader_data.values)));
-  VK_CHECK_RESULT(shader_data.buffer.map());
+  shader_data.buffer.map();
   update_uniform_buffers();
 }
 
