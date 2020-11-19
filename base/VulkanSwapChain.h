@@ -23,7 +23,7 @@
 
 typedef struct _SwapChainBuffers {
 	vk::Image image;
-	vk::ImageView view;
+	vk::UniqueImageView view;
 } SwapChainBuffer;
 
 class VulkanSwapChain
@@ -32,7 +32,7 @@ private:
 	vk::Instance instance;
 	vk::Device device;
 	vk::PhysicalDevice physicalDevice;
-	vk::SurfaceKHR surface;
+	vk::UniqueSurfaceKHR surface;
 	// Function pointers
 	PFN_vkGetPhysicalDeviceSurfaceSupportKHR fpGetPhysicalDeviceSurfaceSupportKHR;
 	PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR fpGetPhysicalDeviceSurfaceCapabilitiesKHR; 
@@ -46,7 +46,7 @@ private:
 public:
 	vk::Format colorFormat;
 	vk::ColorSpaceKHR colorSpace;
-	vk::SwapchainKHR swapChain;
+	vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderDynamic> swapChain;
 	uint32_t imageCount;
 	std::vector<vk::Image> images;
 	std::vector<SwapChainBuffer> buffers;

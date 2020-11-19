@@ -42,16 +42,16 @@ namespace vks
 
 		std::vector<vk::PipelineShaderStageCreateInfo> shaders;
 
-		vk::DescriptorPool descriptorPool;
-		vk::DescriptorSetLayout descriptorSetLayout;
+		vk::UniqueDescriptorPool descriptorPool;
+		vk::UniqueDescriptorSetLayout descriptorSetLayout;
 		vk::DescriptorSet descriptorSet;
-		vk::PipelineLayout pipelineLayout;
-		vk::Pipeline pipeline;
+		vk::UniquePipelineLayout pipelineLayout;
+		vk::UniquePipeline pipeline;
 
-		vk::DeviceMemory fontMemory;
-		vk::Image fontImage;
-		vk::ImageView fontView;
-		vk::Sampler sampler;
+		vk::UniqueDeviceMemory fontMemory;
+		vk::UniqueImage fontImage;
+		vk::UniqueImageView fontView;
+		vk::UniqueSampler sampler;
 
 		struct PushConstBlock {
 			glm::vec2 scale;

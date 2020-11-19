@@ -738,7 +738,7 @@ VulkanExampleBase::~VulkanExampleBase()
 
 	if (settings.validation)
 	{
-		vks::debug::freeDebugCallback(*instance);
+		vks::debug::freeDebugCallback();
 	}
 
 	instance.reset();
@@ -2340,7 +2340,7 @@ void VulkanExampleBase::setupFrameBuffer()
 	frameBuffers.resize(swapChain.imageCount);
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
-		attachments[0] = swapChain.buffers[i].view;
+		attachments[0] = *swapChain.buffers[i].view;
 		frameBuffers[i] = device.createFramebufferUnique(frameBufferCreateInfo);
 	}
 }

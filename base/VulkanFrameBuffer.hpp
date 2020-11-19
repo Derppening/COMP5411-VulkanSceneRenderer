@@ -22,9 +22,9 @@ namespace vks
 	*/
 	struct FramebufferAttachment
 	{
-		vk::Image image;
-		vk::DeviceMemory memory;
-		vk::ImageView view;
+		vk::UniqueImage image;
+		vk::UniqueDeviceMemory memory;
+		vk::UniqueImageView view;
 		vk::Format format;
 		vk::ImageSubresourceRange subresourceRange;
 		vk::AttachmentDescription description;
@@ -114,11 +114,11 @@ namespace vks
 		~Framebuffer()
 		{
 			assert(vulkanDevice);
-			for (auto attachment : attachments)
+			for (auto& attachment : attachments)
 			{
-				vulkanDevice->logicalDevice->destroy(attachment.image);
-				vulkanDevice->logicalDevice->destroy(attachment.view);
-				vulkanDevice->logicalDevice->free(attachment.memory);
+				attachment.image.reset();
+				attachment.view.reset();
+				attachment.memory.reset();
 			}
 			vulkanDevice->logicalDevice->destroy(sampler);
 			vulkanDevice->logicalDevice->destroy(renderPass);
@@ -179,12 +179,12 @@ namespace vks
 			vk::MemoryRequirements memReqs;
 
 			// Create image for this attachment
-			attachment.image = vulkanDevice->logicalDevice->createImage(image);
-			memReqs = vulkanDevice->logicalDevice->getImageMemoryRequirements(attachment.image);
+			attachment.image = vulkanDevice->logicalDevice->createImageUnique(image);
+			memReqs = vulkanDevice->logicalDevice->getImageMemoryRequirements(*attachment.image);
 			memAlloc.allocationSize = memReqs.size;
 			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-			attachment.memory = vulkanDevice->logicalDevice->allocateMemory(memAlloc);
-			vulkanDevice->logicalDevice->bindImageMemory(attachment.image, attachment.memory, {});
+			attachment.memory = vulkanDevice->logicalDevice->allocateMemoryUnique(memAlloc);
+			vulkanDevice->logicalDevice->bindImageMemory(*attachment.image, *attachment.memory, {});
 
 			attachment.subresourceRange = vk::ImageSubresourceRange{};
 			attachment.subresourceRange.aspectMask = aspectMask;
@@ -197,8 +197,8 @@ namespace vks
 			imageView.subresourceRange = attachment.subresourceRange;
 			//todo: workaround for depth+stencil attachments
 			imageView.subresourceRange.aspectMask = (attachment.hasDepth()) ? vk::ImageAspectFlagBits::eDepth : aspectMask;
-			imageView.image = attachment.image;
-			attachment.view = vulkanDevice->logicalDevice->createImageView(imageView);
+			imageView.image = *attachment.image;
+			attachment.view = vulkanDevice->logicalDevice->createImageViewUnique(imageView);
 
 			// Fill attachment description
 			attachment.description = vk::AttachmentDescription{};
@@ -220,7 +220,7 @@ namespace vks
 				attachment.description.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 			}
 
-			attachments.push_back(attachment);
+			attachments.push_back(std::move(attachment));
 
 			return static_cast<uint32_t>(attachments.size() - 1);
 		}
@@ -335,14 +335,14 @@ namespace vks
 			renderPass = vulkanDevice->logicalDevice->createRenderPass(renderPassInfo);
 
 			std::vector<vk::ImageView> attachmentViews;
-			for (auto attachment : attachments)
+			for (auto& attachment : attachments)
 			{
-				attachmentViews.push_back(attachment.view);
+				attachmentViews.push_back(*attachment.view);
 			}
 
 			// Find. max number of layers across attachments
 			uint32_t maxLayers = 0;
-			for (auto attachment : attachments)
+			for (auto& attachment : attachments)
 			{
 				if (attachment.subresourceRange.layerCount > maxLayers)
 				{

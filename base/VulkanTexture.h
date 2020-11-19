@@ -28,15 +28,15 @@ class Texture
 {
   public:
 	vks::VulkanDevice *   device;
-	vk::Image               image;
+	vk::UniqueImage               image;
 	vk::ImageLayout         imageLayout;
-	vk::DeviceMemory        deviceMemory;
-	vk::ImageView           view;
+	vk::UniqueDeviceMemory        deviceMemory;
+	vk::UniqueImageView           view;
 	uint32_t              width, height;
 	uint32_t              mipLevels;
 	uint32_t              layerCount;
 	vk::DescriptorImageInfo descriptor;
-	vk::Sampler             sampler;
+	vk::UniqueSampler             sampler;
 
 	void      updateDescriptor();
 	void      destroy();

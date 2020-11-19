@@ -38,7 +38,7 @@ struct VulkanDevice
 	/** @brief List of extensions supported by the device */
 	std::vector<std::string> supportedExtensions;
 	/** @brief Default command pool for the graphics queue family index */
-	vk::CommandPool commandPool;
+	vk::UniqueCommandPool commandPool;
 	/** @brief Set to true when the debug marker extension is detected */
 	bool enableDebugMarkers = false;
 	/** @brief Contains queue family indices */
@@ -54,18 +54,18 @@ struct VulkanDevice
 	};
 	explicit VulkanDevice(vk::PhysicalDevice physicalDevice);
 	~VulkanDevice();
-	uint32_t        getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, vk::Bool32 *memTypeFound = nullptr) const;
-	uint32_t        getQueueFamilyIndex(vk::QueueFlagBits queueFlags) const;
-	vk::Result        createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char *> enabledExtensions, void *pNextChain, bool useSwapChain = true, vk::QueueFlags requestedQueueTypes = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
-	vk::Result        createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::DeviceSize size, vk::Buffer *buffer, vk::DeviceMemory *memory, void *data = nullptr);
-	vk::Result        createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, vk::DeviceSize size, void *data = nullptr);
-	void            copyBuffer(vks::Buffer *src, vks::Buffer *dst, vk::Queue queue, vk::BufferCopy *copyRegion = nullptr);
-	vk::CommandPool   createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlags createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-	vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level, vk::CommandPool pool, bool begin = false);
-	vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level, bool begin = false);
-	void            flushCommandBuffer(vk::CommandBuffer commandBuffer, vk::Queue queue, vk::CommandPool pool, bool free = true);
-	void            flushCommandBuffer(vk::CommandBuffer commandBuffer, vk::Queue queue, bool free = true);
-	bool            extensionSupported(std::string extension);
-	vk::Format        getSupportedDepthFormat(bool checkSamplingSupport);
+	uint32_t                getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, vk::Bool32 *memTypeFound = nullptr) const;
+	uint32_t                getQueueFamilyIndex(vk::QueueFlagBits queueFlags) const;
+	vk::Result              createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char *> enabledExtensions, void *pNextChain, bool useSwapChain = true, vk::QueueFlags requestedQueueTypes = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
+	vk::Result              createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::DeviceSize size, vk::UniqueBuffer *buffer, vk::UniqueDeviceMemory *memory, void *data = nullptr);
+	vk::Result              createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, vk::DeviceSize size, void *data = nullptr);
+	void                    copyBuffer(vks::Buffer *src, vks::Buffer *dst, vk::Queue queue, vk::BufferCopy *copyRegion = nullptr);
+	vk::UniqueCommandPool   createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlags createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+	vk::UniqueCommandBuffer createCommandBuffer(vk::CommandBufferLevel level, vk::CommandPool pool, bool begin = false);
+	vk::UniqueCommandBuffer createCommandBuffer(vk::CommandBufferLevel level, bool begin = false);
+	void                    flushCommandBuffer(vk::UniqueCommandBuffer& commandBuffer, vk::Queue queue, vk::CommandPool pool, bool free = true);
+	void                    flushCommandBuffer(vk::UniqueCommandBuffer& commandBuffer, vk::Queue queue, bool free = true);
+	bool                    extensionSupported(std::string extension);
+	vk::Format              getSupportedDepthFormat(bool checkSamplingSupport);
 };
 }        // namespace vks

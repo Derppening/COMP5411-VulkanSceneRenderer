@@ -39,8 +39,8 @@ namespace vkglTF
 		ImageNormalMap = 0x00000002
 	};
 
-	extern vk::DescriptorSetLayout descriptorSetLayoutImage;
-	extern vk::DescriptorSetLayout descriptorSetLayoutUbo;
+	extern vk::UniqueDescriptorSetLayout descriptorSetLayoutImage;
+	extern vk::UniqueDescriptorSetLayout descriptorSetLayoutUbo;
     extern vk::MemoryPropertyFlags memoryPropertyFlags;
 	extern uint32_t descriptorBindingFlags;
 
@@ -51,15 +51,15 @@ namespace vkglTF
 	*/
 	struct Texture {
 		vks::VulkanDevice* device;
-		vk::Image image;
+		vk::UniqueImage image;
 		vk::ImageLayout imageLayout;
-		vk::DeviceMemory deviceMemory;
-		vk::ImageView view;
+		vk::UniqueDeviceMemory deviceMemory;
+		vk::UniqueImageView view;
 		uint32_t width, height;
 		uint32_t mipLevels;
 		uint32_t layerCount;
 		vk::DescriptorImageInfo descriptor;
-		vk::Sampler sampler;
+		vk::UniqueSampler sampler;
 		void updateDescriptor();
 		void destroy();
 		void fromglTfImage(tinygltf::Image& gltfimage, std::string path, vks::VulkanDevice* device, vk::Queue copyQueue);
@@ -123,8 +123,8 @@ namespace vkglTF
 		std::string name;
 
 		struct UniformBuffer {
-			vk::Buffer buffer;
-			vk::DeviceMemory memory;
+			vk::UniqueBuffer buffer;
+			vk::UniqueDeviceMemory memory;
 			vk::DescriptorBufferInfo descriptor;
 			vk::DescriptorSet descriptorSet;
 			void* mapped;
@@ -250,17 +250,17 @@ namespace vkglTF
 		void createEmptyTexture(vk::Queue transferQueue);
 	public:
 		vks::VulkanDevice* device;
-		vk::DescriptorPool descriptorPool;
+		vk::UniqueDescriptorPool descriptorPool;
 
 		struct Vertices {
 			int count;
-			vk::Buffer buffer;
-			vk::DeviceMemory memory;
+			vk::UniqueBuffer buffer;
+			vk::UniqueDeviceMemory memory;
 		} vertices;
 		struct Indices {
 			int count;
-			vk::Buffer buffer;
-			vk::DeviceMemory memory;
+			vk::UniqueBuffer buffer;
+			vk::UniqueDeviceMemory memory;
 		} indices;
 
 		std::vector<Node*> nodes;

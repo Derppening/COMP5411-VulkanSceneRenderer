@@ -212,15 +212,15 @@ namespace vks
 				indexBufferSize);
 
 			// Copy from staging buffers
-			vk::CommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
+			vk::UniqueCommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
 
 			vk::BufferCopy copyRegion = {};
 
 			copyRegion.size = vertexBufferSize;
-			copyCmd.copyBuffer(*vertexStaging.buffer, *vertexBuffer.buffer, {copyRegion});
+			copyCmd->copyBuffer(*vertexStaging.buffer, *vertexBuffer.buffer, {copyRegion});
 
 			copyRegion.size = indexBufferSize;
-			copyCmd.copyBuffer(*indexStaging.buffer, *indexBuffer.buffer, {copyRegion});
+			copyCmd->copyBuffer(*indexStaging.buffer, *indexBuffer.buffer, {copyRegion});
 
 			device->flushCommandBuffer(copyCmd, copyQueue, true);
 

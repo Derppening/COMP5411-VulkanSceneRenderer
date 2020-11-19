@@ -19,14 +19,14 @@ class vulkan_gltf_scene {
   };
 
   struct {
-    vk::Buffer buffer;
-    vk::DeviceMemory memory;
+    vk::UniqueBuffer buffer;
+    vk::UniqueDeviceMemory memory;
   } vertices;
 
   struct {
     int count;
-    vk::Buffer buffer;
-    vk::DeviceMemory memory;
+    vk::UniqueBuffer buffer;
+    vk::UniqueDeviceMemory memory;
   } indices;
 
   struct node;

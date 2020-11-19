@@ -4,15 +4,15 @@
 
 vulkan_gltf_scene::~vulkan_gltf_scene() {
   // Release all Vulkan resources allocated for the model
-  vkDestroyBuffer(*vulkan_device->logicalDevice, vertices.buffer, nullptr);
-  vkFreeMemory(*vulkan_device->logicalDevice, vertices.memory, nullptr);
-  vkDestroyBuffer(*vulkan_device->logicalDevice, indices.buffer, nullptr);
-  vkFreeMemory(*vulkan_device->logicalDevice, indices.memory, nullptr);
-  for (vulkan_gltf_scene::image image : images) {
-    vkDestroyImageView(*vulkan_device->logicalDevice, image.texture.view, nullptr);
-    vkDestroyImage(*vulkan_device->logicalDevice, image.texture.image, nullptr);
-    vkDestroySampler(*vulkan_device->logicalDevice, image.texture.sampler, nullptr);
-    vkFreeMemory(*vulkan_device->logicalDevice, image.texture.deviceMemory, nullptr);
+  vertices.buffer.reset();
+  vertices.memory.reset();
+  indices.buffer.reset();
+  indices.memory.reset();
+  for (vulkan_gltf_scene::image& image : images) {
+    image.texture.view.reset();
+    image.texture.image.reset();
+    image.texture.sampler.reset();
+    image.texture.deviceMemory.reset();
   }
   for (vulkan_gltf_scene::material& material : materials) {
     vkDestroyPipeline(*vulkan_device->logicalDevice, material.pipeline, nullptr);
@@ -259,8 +259,8 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
 void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout) {
   // All vertices and indices are stored in single buffers, so we only need to bind once
   auto offsets = std::array<vk::DeviceSize, 1>{{0}};
-  command_buffer.bindVertexBuffers(0, {vertices.buffer}, offsets);
-  vkCmdBindIndexBuffer(command_buffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+  command_buffer.bindVertexBuffers(0, {*vertices.buffer}, offsets);
+  command_buffer.bindIndexBuffer(*indices.buffer, 0, vk::IndexType::eUint32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
     draw_node(command_buffer, pipeline_layout, node);

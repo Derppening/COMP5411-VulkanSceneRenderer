@@ -16,7 +16,7 @@ namespace vks
 
 	namespace debug
 	{
-		vk::DebugUtilsMessengerEXT debugUtilsMessenger;
+		vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debugUtilsMessenger;
 
 		VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsMessengerCallback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -66,15 +66,12 @@ namespace vks
 			debugUtilsMessengerCI.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 			debugUtilsMessengerCI.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 			debugUtilsMessengerCI.pfnUserCallback = debugUtilsMessengerCallback;
-			debugUtilsMessenger = instance.createDebugUtilsMessengerEXT(debugUtilsMessengerCI, nullptr, dynamicDispatchLoader);
+			debugUtilsMessenger = instance.createDebugUtilsMessengerEXTUnique(debugUtilsMessengerCI, nullptr, dynamicDispatchLoader);
 		}
 
-		void freeDebugCallback(vk::Instance instance)
+		void freeDebugCallback()
 		{
-			if (debugUtilsMessenger)
-			{
-				instance.destroy(debugUtilsMessenger, nullptr, dynamicDispatchLoader);
-			}
+            debugUtilsMessenger.reset();
 		}
 	}
 

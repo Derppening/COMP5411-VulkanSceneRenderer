@@ -47,7 +47,7 @@ namespace vks
 			vk::DebugReportFlagsEXT flags,
 			vk::DebugReportCallbackEXT callBack);
 		// Clear debug callback
-		void freeDebugCallback(vk::Instance instance);
+		void freeDebugCallback();
 	}
 
 	// Setup and functions for the VK_EXT_debug_marker_extension

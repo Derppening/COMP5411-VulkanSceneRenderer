@@ -70,7 +70,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	err = glfwCreateWindowSurface(instance, window, nullptr, &surface);
 #endif
 
-	this->surface = surface;
+	this->surface = vk::UniqueSurfaceKHR{surface, instance};
 
 	if (err != VK_SUCCESS) {
 		vks::tools::exitFatal("Could not create surface!", err);
@@ -86,7 +86,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	std::vector<vk::Bool32> supportsPresent(queueCount);
 	for (uint32_t i = 0; i < queueCount; i++) 
 	{
-		supportsPresent[i] = physicalDevice.getSurfaceSupportKHR(i, this->surface, vks::dynamicDispatchLoader);
+		supportsPresent[i] = physicalDevice.getSurfaceSupportKHR(i, *this->surface, vks::dynamicDispatchLoader);
 	}
 
 	// Search for a graphics and a present queue in the array of queue
@@ -139,7 +139,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	queueNodeIndex = graphicsQueueNodeIndex;
 
 	// Get list of supported surface formats
-	std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(this->surface, vks::dynamicDispatchLoader);
+	std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(*this->surface, vks::dynamicDispatchLoader);
     uint32_t formatCount = surfaceFormats.size();
 
 	// If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
@@ -200,13 +200,13 @@ void VulkanSwapChain::connect(vk::Instance instance, vk::PhysicalDevice physical
 */
 void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 {
-	vk::SwapchainKHR oldSwapchain = swapChain;
+	vk::SwapchainKHR oldSwapchain = *swapChain;
 
 	// Get physical device surface properties and formats
-	vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(surface, vks::dynamicDispatchLoader);
+	vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(*surface, vks::dynamicDispatchLoader);
 
 	// Get available present modes
-	std::vector<vk::PresentModeKHR> presentModes = physicalDevice.getSurfacePresentModesKHR(surface, vks::dynamicDispatchLoader);
+	std::vector<vk::PresentModeKHR> presentModes = physicalDevice.getSurfacePresentModesKHR(*surface, vks::dynamicDispatchLoader);
     uint32_t presentModeCount = presentModes.size();
 
 	vk::Extent2D swapchainExtent = {};
@@ -288,7 +288,7 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 
 	vk::SwapchainCreateInfoKHR swapchainCI = {};
 	swapchainCI.pNext = NULL;
-	swapchainCI.surface = surface;
+	swapchainCI.surface = *surface;
 	swapchainCI.minImageCount = desiredNumberOfSwapchainImages;
 	swapchainCI.imageFormat = colorFormat;
 	swapchainCI.imageColorSpace = colorSpace;
@@ -315,21 +315,20 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 		swapchainCI.imageUsage |= vk::ImageUsageFlagBits::eTransferDst;
 	}
 
-	swapChain = device.createSwapchainKHR(swapchainCI, nullptr, vks::dynamicDispatchLoader);
-
 	// If an existing swap chain is re-created, destroy the old swap chain
 	// This also cleans up all the presentable images
 	if (oldSwapchain)
 	{ 
 		for (uint32_t i = 0; i < imageCount; i++)
 		{
-			device.destroy(buffers[i].view);
+			buffers[i].view.reset();
 		}
-		device.destroy(oldSwapchain, nullptr, vks::dynamicDispatchLoader);
 	}
 
+    swapChain = device.createSwapchainKHRUnique(swapchainCI, nullptr, vks::dynamicDispatchLoader);
+
 	// Get the swap chain images
-	images = device.getSwapchainImagesKHR(swapChain, vks::dynamicDispatchLoader);
+	images = device.getSwapchainImagesKHR(*swapChain, vks::dynamicDispatchLoader);
 	imageCount = images.size();
 
 	// Get the swap chain buffers containing the image and imageview
@@ -357,7 +356,7 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 
 		colorAttachmentView.image = buffers[i].image;
 
-		buffers[i].view = device.createImageView(colorAttachmentView);
+		buffers[i].view = device.createImageViewUnique(colorAttachmentView);
 	}
 }
 
@@ -375,7 +374,7 @@ vk::Result VulkanSwapChain::acquireNextImage(vk::Semaphore presentCompleteSemaph
 {
 	// By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
 	// With that we don't have to handle VK_NOT_READY
-	auto result = device.acquireNextImageKHR(swapChain, UINT64_MAX, presentCompleteSemaphore, {}, vks::dynamicDispatchLoader);
+	auto result = device.acquireNextImageKHR(*swapChain, UINT64_MAX, presentCompleteSemaphore, {}, vks::dynamicDispatchLoader);
 	*imageIndex = result.value;
 	return result.result;
 }
@@ -394,7 +393,7 @@ vk::Result VulkanSwapChain::queuePresent(vk::Queue queue, uint32_t imageIndex, v
 	vk::PresentInfoKHR presentInfo = {};
 	presentInfo.pNext = NULL;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &swapChain;
+	presentInfo.pSwapchains = &*swapChain;
 	presentInfo.pImageIndices = &imageIndex;
 	// Check if a wait semaphore has been specified to wait for before presenting the image
 	if (waitSemaphore)
@@ -415,13 +414,13 @@ void VulkanSwapChain::cleanup()
 	{
 		for (uint32_t i = 0; i < imageCount; i++)
 		{
-			device.destroy(buffers[i].view);
+			buffers[i].view.reset();
 		}
 	}
 	if (surface)
 	{
-		device.destroy(swapChain, nullptr, vks::dynamicDispatchLoader);
-		instance.destroy(surface);
+		swapChain.reset();
+		surface.reset();
 	}
 }
 

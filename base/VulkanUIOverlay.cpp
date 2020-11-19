@@ -68,23 +68,23 @@ namespace vks
 		imageInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
 		imageInfo.sharingMode = vk::SharingMode::eExclusive;
 		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		fontImage = device->logicalDevice->createImage(imageInfo);
-		vk::MemoryRequirements memReqs = device->logicalDevice->getImageMemoryRequirements(fontImage);
+		fontImage = device->logicalDevice->createImageUnique(imageInfo);
+		vk::MemoryRequirements memReqs = device->logicalDevice->getImageMemoryRequirements(*fontImage);
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
 		memAllocInfo.allocationSize = memReqs.size;
 		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-		fontMemory = device->logicalDevice->allocateMemory(memAllocInfo);
-		VK_CHECK_RESULT(vkBindImageMemory(*device->logicalDevice, fontImage, fontMemory, 0));
+		fontMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
+		device->logicalDevice->bindImageMemory(*fontImage, *fontMemory, 0);
 
 		// Image view
 		vk::ImageViewCreateInfo viewInfo = vks::initializers::imageViewCreateInfo();
-		viewInfo.image = fontImage;
+		viewInfo.image = *fontImage;
 		viewInfo.viewType = vk::ImageViewType::e2D;
 		viewInfo.format = vk::Format::eR8G8B8A8Unorm;
 		viewInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 		viewInfo.subresourceRange.levelCount = 1;
 		viewInfo.subresourceRange.layerCount = 1;
-		fontView = device->logicalDevice->createImageView(viewInfo);
+		fontView = device->logicalDevice->createImageViewUnique(viewInfo);
 
 		// Staging buffers for font data upload
 		vks::Buffer stagingBuffer;
@@ -100,12 +100,12 @@ namespace vks
 		stagingBuffer.unmap();
 
 		// Copy buffer data to font image
-		vk::CommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
+		vk::UniqueCommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
 
 		// Prepare for transfer
 		vks::tools::setImageLayout(
-			copyCmd,
-			fontImage,
+			*copyCmd,
+			*fontImage,
 			vk::ImageAspectFlagBits::eColor,
 			vk::ImageLayout::eUndefined,
 			vk::ImageLayout::eTransferDstOptimal,
@@ -120,12 +120,12 @@ namespace vks
 		bufferCopyRegion.imageExtent.height = texHeight;
 		bufferCopyRegion.imageExtent.depth = 1;
 
-		copyCmd.copyBufferToImage(*stagingBuffer.buffer, fontImage, vk::ImageLayout::eTransferDstOptimal, {bufferCopyRegion});
+		copyCmd->copyBufferToImage(*stagingBuffer.buffer, *fontImage, vk::ImageLayout::eTransferDstOptimal, {bufferCopyRegion});
 
 		// Prepare for shader read
 		vks::tools::setImageLayout(
-			copyCmd,
-			fontImage,
+			*copyCmd,
+			*fontImage,
 			vk::ImageAspectFlagBits::eColor,
 			vk::ImageLayout::eTransferDstOptimal,
 			vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -145,28 +145,28 @@ namespace vks
 		samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
 		samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 		samplerInfo.borderColor = vk::BorderColor::eFloatOpaqueWhite;
-		sampler = device->logicalDevice->createSampler(samplerInfo);
+		sampler = device->logicalDevice->createSamplerUnique(samplerInfo);
 
 		// Descriptor pool
 		std::vector<vk::DescriptorPoolSize> poolSizes = {
 			vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 1)
 		};
 		vk::DescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 2);
-		descriptorPool = device->logicalDevice->createDescriptorPool(descriptorPoolInfo);
+		descriptorPool = device->logicalDevice->createDescriptorPoolUnique(descriptorPoolInfo);
 
 		// Descriptor set layout
 		std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings = {
 			vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment, 0),
 		};
 		vk::DescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
-		descriptorSetLayout = device->logicalDevice->createDescriptorSetLayout(descriptorLayout);
+		descriptorSetLayout = device->logicalDevice->createDescriptorSetLayoutUnique(descriptorLayout);
 
 		// Descriptor set
-		vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+		vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptorSetLayout, 1);
 		descriptorSet = device->logicalDevice->allocateDescriptorSets(allocInfo)[0];
 		vk::DescriptorImageInfo fontDescriptor = vks::initializers::descriptorImageInfo(
-			sampler,
-			fontView,
+			*sampler,
+			*fontView,
 			vk::ImageLayout::eShaderReadOnlyOptimal
 		);
 		std::vector<vk::WriteDescriptorSet> writeDescriptorSets = {
@@ -181,10 +181,10 @@ namespace vks
 		// Pipeline layout
 		// Push constants for UI rendering parameters
 		vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex, sizeof(PushConstBlock), 0);
-		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
+		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&*descriptorSetLayout, 1);
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-		pipelineLayout = device->logicalDevice->createPipelineLayout(pipelineLayoutCreateInfo);
+		pipelineLayout = device->logicalDevice->createPipelineLayoutUnique(pipelineLayoutCreateInfo);
 
 		// Setup graphics pipeline for UI rendering
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState =
@@ -223,7 +223,7 @@ namespace vks
 		vk::PipelineDynamicStateCreateInfo dynamicState =
 			vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
 
-		vk::GraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
+		vk::GraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(*pipelineLayout, renderPass);
 
 		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 		pipelineCreateInfo.pRasterizationState = &rasterizationState;
@@ -253,7 +253,7 @@ namespace vks
 
 		pipelineCreateInfo.pVertexInputState = &vertexInputState;
 
-		pipeline = device->logicalDevice->createGraphicsPipeline(pipelineCache, pipelineCreateInfo).value;
+		pipeline = device->logicalDevice->createGraphicsPipelineUnique(pipelineCache, pipelineCreateInfo).value;
 	}
 
 	/** Update vertex and index buffer containing the imGui elements when required */
@@ -326,12 +326,12 @@ namespace vks
 
 		ImGuiIO& io = ImGui::GetIO();
 
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, {descriptorSet}, {});
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, {descriptorSet}, {});
 
 		pushConstBlock.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
 		pushConstBlock.translate = glm::vec2(-1.0f);
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstBlock), &pushConstBlock);
+		commandBuffer.pushConstants<PushConstBlock>(*pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, {pushConstBlock});
 
 		std::array<vk::DeviceSize, 1> offsets = { 0 };
 //		vk::Buffer vertexBufferBuffer = vk::Buffer(*vertexBuffer.buffer);
@@ -369,14 +369,14 @@ namespace vks
 		ImGui::DestroyContext();
 		vertexBuffer.destroy();
 		indexBuffer.destroy();
-		vkDestroyImageView(*device->logicalDevice, fontView, nullptr);
-		vkDestroyImage(*device->logicalDevice, fontImage, nullptr);
-		vkFreeMemory(*device->logicalDevice, fontMemory, nullptr);
-		vkDestroySampler(*device->logicalDevice, sampler, nullptr);
-		vkDestroyDescriptorSetLayout(*device->logicalDevice, descriptorSetLayout, nullptr);
-		vkDestroyDescriptorPool(*device->logicalDevice, descriptorPool, nullptr);
-		vkDestroyPipelineLayout(*device->logicalDevice, pipelineLayout, nullptr);
-		vkDestroyPipeline(*device->logicalDevice, pipeline, nullptr);
+		fontView.reset();
+		fontImage.reset();
+		fontMemory.reset();
+		sampler.reset();
+		descriptorSetLayout.reset();
+		descriptorPool.reset();
+		pipelineLayout.reset();
+		pipeline.reset();
 	}
 
 	bool UIOverlay::header(const char *caption)
