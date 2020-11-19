@@ -96,7 +96,7 @@ namespace vks
 			uploadSize));
 
 		stagingBuffer.map();
-		memcpy(stagingBuffer.mapped, fontData, uploadSize);
+		std::copy_n(reinterpret_cast<std::byte*>(fontData), uploadSize, static_cast<std::byte*>(stagingBuffer.mapped));
 		stagingBuffer.unmap();
 
 		// Copy buffer data to font image
@@ -301,8 +301,8 @@ namespace vks
 
 		for (int n = 0; n < imDrawData->CmdListsCount; n++) {
 			const ImDrawList* cmd_list = imDrawData->CmdLists[n];
-			memcpy(vtxDst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-			memcpy(idxDst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+			std::copy_n(reinterpret_cast<std::byte*>(cmd_list->VtxBuffer.Data), cmd_list->VtxBuffer.Size * sizeof(ImDrawVert), reinterpret_cast<std::byte*>(vtxDst));
+			std::copy_n(reinterpret_cast<std::byte*>(cmd_list->IdxBuffer.Data), cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx), reinterpret_cast<std::byte*>(idxDst));
 			vtxDst += cmd_list->VtxBuffer.Size;
 			idxDst += cmd_list->IdxBuffer.Size;
 		}
@@ -334,10 +334,8 @@ namespace vks
 		commandBuffer.pushConstants<PushConstBlock>(*pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, {pushConstBlock});
 
 		std::array<vk::DeviceSize, 1> offsets = { 0 };
-//		vk::Buffer vertexBufferBuffer = vk::Buffer(*vertexBuffer.buffer);
-//		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBufferBuffer, offsets);
 		commandBuffer.bindVertexBuffers(0, {*vertexBuffer.buffer}, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, *indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+		commandBuffer.bindIndexBuffer(*indexBuffer.buffer, 0, vk::IndexType::eUint16);
 
 		for (int32_t i = 0; i < imDrawData->CmdListsCount; i++)
 		{
@@ -351,7 +349,7 @@ namespace vks
 				scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
 				scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
 				commandBuffer.setScissor(0, {scissorRect});
-				vkCmdDrawIndexed(commandBuffer, pcmd->ElemCount, 1, indexOffset, vertexOffset, 0);
+				commandBuffer.drawIndexed(pcmd->ElemCount, 1, indexOffset, vertexOffset, 0);
 				indexOffset += pcmd->ElemCount;
 			}
 			vertexOffset += cmd_list->VtxBuffer.Size;

@@ -250,7 +250,7 @@ namespace vks
 			samplerInfo.maxLod = 1.0f;
 			samplerInfo.borderColor = vk::BorderColor::eFloatOpaqueWhite;
 			sampler = vulkanDevice->logicalDevice->createSampler(samplerInfo);
-			return vk::Result::eSuccess;  // TODO
+			return vk::Result::eSuccess;
 		}
 
 		/**

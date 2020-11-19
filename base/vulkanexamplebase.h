@@ -69,10 +69,6 @@
 #include "camera.hpp"
 #include "benchmark.hpp"
 
-// TODO: Remove after tested
-#include "VulkanFrameBuffer.hpp"
-#include "VulkanHeightmap.hpp"
-
 class VulkanExampleBase
 {
 private:

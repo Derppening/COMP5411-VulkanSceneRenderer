@@ -18,9 +18,9 @@ vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDA
 }
 
 vulkan_scene_renderer::~vulkan_scene_renderer() {
-  vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
-  vkDestroyDescriptorSetLayout(device, descriptor_set_layouts.matrices, nullptr);
-  vkDestroyDescriptorSetLayout(device, descriptor_set_layouts.textures, nullptr);
+  pipeline_layout.reset();
+  descriptor_set_layouts.matrices.reset();
+  descriptor_set_layouts.textures.reset();
   shader_data.buffer.destroy();
 }
 
@@ -55,10 +55,10 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     drawCmdBuffers[i]->setViewport(0, {viewport});
     drawCmdBuffers[i]->setScissor(0, {scissor});
     // Bind scene matrices descriptor to set 0
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, {descriptor_set}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
 
     // POI: Draw the glTF scene
-    gltf_scene.draw(*drawCmdBuffers[i], pipeline_layout);
+    gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
 
     drawUI(*drawCmdBuffers[i]);
     drawCmdBuffers[i]->endRenderPass();
@@ -188,7 +188,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   };
   vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
 
-  descriptor_set_layouts.matrices = device.createDescriptorSetLayout(descriptor_set_layout_ci);
+  descriptor_set_layouts.matrices = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
 
   // Descriptor set layout for passing material textures
   set_layout_bindings = {
@@ -199,20 +199,20 @@ void vulkan_scene_renderer::setup_descriptors() {
   };
   descriptor_set_layout_ci.pBindings = set_layout_bindings.data();
   descriptor_set_layout_ci.bindingCount = 2;
-  descriptor_set_layouts.textures = device.createDescriptorSetLayout(descriptor_set_layout_ci);
+  descriptor_set_layouts.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
 
   // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material)
-  std::array<vk::DescriptorSetLayout, 2> setLayouts = { descriptor_set_layouts.matrices, descriptor_set_layouts.textures };
+  std::array<vk::DescriptorSetLayout, 2> setLayouts = { *descriptor_set_layouts.matrices, *descriptor_set_layouts.textures };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
   vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex, sizeof(glm::mat4), 0);
   // Push constant ranges are part of the pipeline layout
   pipelineLayoutCI.pushConstantRangeCount = 1;
   pipelineLayoutCI.pPushConstantRanges = &pushConstantRange;
-  pipeline_layout = device.createPipelineLayout(pipelineLayoutCI);
+  pipeline_layout = device.createPipelineLayoutUnique(pipelineLayoutCI);
 
   // Descriptor set for scene matrices
-  vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &descriptor_set_layouts.matrices, 1);
+  vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.matrices, 1);
   descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
   vk::DescriptorBufferInfo shader_data_buffer_descriptor = shader_data.buffer.descriptor;
   vk::WriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(descriptor_set, vk::DescriptorType::eUniformBuffer, 0, &shader_data_buffer_descriptor);
@@ -220,7 +220,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Descriptor sets for materials
   for (auto& material : gltf_scene.materials) {
-    const vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &descriptor_set_layouts.textures, 1);
+    const vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.textures, 1);
     material.descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
     vk::DescriptorImageInfo colorMap = gltf_scene.get_texture_descriptor(material.base_color_texture_index);
     vk::DescriptorImageInfo normalMap = gltf_scene.get_texture_descriptor(material.normal_texture_index);
@@ -256,7 +256,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   };
   vk::PipelineVertexInputStateCreateInfo vertexInputStateCI = vks::initializers::pipelineVertexInputStateCreateInfo(vertexInputBindings, vertexInputAttributes);
 
-  vk::GraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(pipeline_layout, *renderPass, {});
+  vk::GraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(*pipeline_layout, *renderPass, {});
   pipelineCI.pVertexInputState = &vertexInputStateCI;
   pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
   pipelineCI.pRasterizationState = &rasterizationStateCI;

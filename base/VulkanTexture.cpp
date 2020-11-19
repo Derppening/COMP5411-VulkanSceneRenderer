@@ -104,7 +104,7 @@ namespace vks
 			// Copy texture data into staging buffer
 			uint8_t *data;
 			data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-			memcpy(data, ktxTextureData, ktxTextureSize);
+			std::copy_n(ktxTextureData, ktxTextureSize, data);
 			device->logicalDevice->unmapMemory(*stagingMemory);
 
 			// Setup buffer copy regions for each mip level
@@ -248,7 +248,7 @@ namespace vks
 			data = device->logicalDevice->mapMemory(*mappableMemory, 0, memReqs.size, {});
 
 			// Copy image data into memory
-			memcpy(data, ktxTextureData, memReqs.size);
+			std::copy_n(reinterpret_cast<std::byte*>(ktxTextureData), memReqs.size, static_cast<std::byte*>(data));
 
 			device->logicalDevice->unmapMemory(*mappableMemory);
 
@@ -358,7 +358,7 @@ namespace vks
 		// Copy texture data into staging buffer
 		uint8_t *data;
 		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-		memcpy(data, buffer, bufferSize);
+		std::copy_n(static_cast<std::byte*>(buffer), bufferSize, reinterpret_cast<std::byte*>(data));
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
 		vk::BufferImageCopy bufferCopyRegion = {};
@@ -515,7 +515,7 @@ namespace vks
 		// Copy texture data into staging buffer
 		uint8_t *data;
 		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-		memcpy(data, ktxTextureData, ktxTextureSize);
+		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
 		// Setup buffer copy regions for each layer including all of its miplevels
@@ -693,7 +693,7 @@ namespace vks
 		// Copy texture data into staging buffer
 		uint8_t *data;
 		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-		memcpy(data, ktxTextureData, ktxTextureSize);
+		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
 		// Setup buffer copy regions for each face including all of its mip levels
@@ -807,7 +807,7 @@ namespace vks
 		viewCreateInfo.viewType = vk::ImageViewType::eCube;
 		viewCreateInfo.format = format;
 		viewCreateInfo.components = { vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG, vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA };;
-		viewCreateInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		viewCreateInfo.subresourceRange = { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 };
 		viewCreateInfo.subresourceRange.layerCount = 6;
 		viewCreateInfo.subresourceRange.levelCount = mipLevels;
 		viewCreateInfo.image = *image;

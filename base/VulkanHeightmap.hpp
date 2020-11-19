@@ -80,7 +80,7 @@ namespace vks
 			ktx_uint8_t* ktxImage = ktxTexture_GetData(ktxTexture);
 			dim = ktxTexture->baseWidth;
 			heightdata = new uint16_t[dim * dim];
-			memcpy(heightdata, ktxImage, ktxSize);
+			std::copy_n(reinterpret_cast<std::byte*>(ktxImage), ktxSize, reinterpret_cast<std::byte*>(heightdata));
 			this->scale = dim / patchsize;
 			ktxTexture_Destroy(ktxTexture);
 

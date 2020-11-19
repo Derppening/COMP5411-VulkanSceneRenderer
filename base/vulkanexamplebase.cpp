@@ -262,7 +262,7 @@ void VulkanExampleBase::renderLoop()
 {
 	if (benchmark.active) {
 		benchmark.run([=] { render(); }, vulkanDevice->properties);
-		vkDeviceWaitIdle(device);
+		device.waitIdle();
 		if (benchmark.filename != "") {
 			benchmark.saveResults();
 		}
@@ -600,7 +600,7 @@ void VulkanExampleBase::submitFrame()
       windowResize();
       return;
     }
-	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+    queue.waitIdle();
 }
 
 VulkanExampleBase::VulkanExampleBase(bool enableValidation)
@@ -2349,7 +2349,7 @@ void VulkanExampleBase::setupRenderPass()
 {
 	std::array<vk::AttachmentDescription, 2> attachments = {};
 	// Color attachment
-	attachments[0].format = static_cast<vk::Format>(swapChain.colorFormat);  // TODO
+	attachments[0].format = swapChain.colorFormat;
 	attachments[0].samples = vk::SampleCountFlagBits::e1;
 	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
 	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
@@ -2358,7 +2358,7 @@ void VulkanExampleBase::setupRenderPass()
 	attachments[0].initialLayout = vk::ImageLayout::eUndefined;
 	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 	// Depth attachment
-	attachments[1].format = static_cast<vk::Format>(depthFormat);  // TODO
+	attachments[1].format = depthFormat;
 	attachments[1].samples = vk::SampleCountFlagBits::e1;
 	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
 	attachments[1].storeOp = vk::AttachmentStoreOp::eStore;
@@ -2428,7 +2428,7 @@ void VulkanExampleBase::windowResize()
 	resized = true;
 
 	// Ensure all operations on the device have been finished before destroying resources
-	vkDeviceWaitIdle(device);
+	device.waitIdle();
 
 	// Recreate swap chain
 	width = destWidth;
@@ -2455,7 +2455,7 @@ void VulkanExampleBase::windowResize()
 	createCommandBuffers();
 	buildCommandBuffers();
 
-	vkDeviceWaitIdle(device);
+	device.waitIdle();
 
 	if ((width > 0.0f) && (height > 0.0f)) {
 		camera.updateAspectRatio((float)width / (float)height);

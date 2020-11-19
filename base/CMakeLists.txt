@@ -2,27 +2,16 @@ if (USE_NATIVE_WSI)
     file(GLOB BASE_SRC "*.cpp" "*.hpp" "*.h" "${imgui_SOURCE_DIR}/*.cpp")
     file(GLOB BASE_HEADERS "*.hpp" "*.h")
 
-    set(KTX_DIR ${ktx_SOURCE_DIR})
-    set(KTX_SOURCES
-            ${KTX_DIR}/lib/texture.c
-            ${KTX_DIR}/lib/hashlist.c
-            ${KTX_DIR}/lib/checkheader.c
-            ${KTX_DIR}/lib/swap.c
-            ${KTX_DIR}/lib/memstream.c
-            ${KTX_DIR}/lib/filestream.c)
-
     add_library(base STATIC ${BASE_SRC} ${KTX_SOURCES})
     target_include_directories(base PUBLIC
             .)
     target_include_directories(base SYSTEM PUBLIC
-            ${imgui_SOURCE_DIR}
-            ${KTX_DIR}/include
-            ${KTX_DIR}/other_include)
+            ${imgui_SOURCE_DIR})
 
     if(WIN32)
-        target_link_libraries(base ${Vulkan_LIBRARY} ${WINLIBS})
+        target_link_libraries(base ktx ${Vulkan_LIBRARY} ${WINLIBS})
      else(WIN32)
-        target_link_libraries(base ${Vulkan_LIBRARY} ${XCB_LIBRARIES} ${WAYLAND_CLIENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+        target_link_libraries(base ktx ${Vulkan_LIBRARY} ${XCB_LIBRARIES} ${WAYLAND_CLIENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
     endif(WIN32)
 else (USE_NATIVE_WSI)
     file(GLOB BASE_SRC "*.cpp" "*.hpp" "*.h")

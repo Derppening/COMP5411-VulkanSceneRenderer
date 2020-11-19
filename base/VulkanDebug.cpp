@@ -119,7 +119,7 @@ namespace vks
 			if (dynamicDispatchLoader.vkCmdDebugMarkerBeginEXT)
 			{
 				vk::DebugMarkerMarkerInfoEXT markerInfo = {};
-				memcpy(markerInfo.color, &color[0], sizeof(float) * 4);
+				std::copy_n(reinterpret_cast<std::byte*>(&color[0]), sizeof(float) * 4, reinterpret_cast<std::byte*>(&markerInfo.color));
 				markerInfo.pMarkerName = pMarkerName;
 				cmdbuffer.debugMarkerBeginEXT(markerInfo, dynamicDispatchLoader);
 			}
@@ -131,7 +131,7 @@ namespace vks
 			if (dynamicDispatchLoader.vkCmdDebugMarkerInsertEXT)
 			{
 				vk::DebugMarkerMarkerInfoEXT markerInfo = {};
-				memcpy(markerInfo.color, &color[0], sizeof(float) * 4);
+				std::copy_n(reinterpret_cast<std::byte*>(&color[0]), sizeof(float) * 4, reinterpret_cast<std::byte*>(&markerInfo.color));
 				markerInfo.pMarkerName = markerName.c_str();
 				cmdbuffer.debugMarkerInsertEXT(markerInfo, dynamicDispatchLoader);
 			}

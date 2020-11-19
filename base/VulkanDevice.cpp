@@ -311,7 +311,7 @@ namespace vks
 		{
 			void *mapped;
 			mapped = logicalDevice->mapMemory(**memory, 0, size, {});
-			memcpy(mapped, data, size);
+			std::copy_n(static_cast<std::byte*>(data), size, static_cast<std::byte*>(mapped));
 			// If host coherency hasn't been requested, do a manual flush to make writes visible
 			if (!(memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent))
 			{
@@ -373,7 +373,7 @@ namespace vks
 		if (data != nullptr)
 		{
 			buffer->map();
-			memcpy(buffer->mapped, data, size);
+			std::copy_n(static_cast<std::byte*>(data), size, static_cast<std::byte*>(buffer->mapped));
 			if (!(memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent))
 				buffer->flush();
 

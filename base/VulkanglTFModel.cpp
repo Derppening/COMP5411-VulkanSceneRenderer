@@ -131,7 +131,7 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 
 		uint8_t* data;
 		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-		memcpy(data, buffer, bufferSize);
+		std::copy_n(buffer, bufferSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
 		vk::ImageCreateInfo imageCreateInfo{};
@@ -310,7 +310,7 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 
 		uint8_t* data;
 		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-		memcpy(data, ktxTextureData, ktxTextureSize);
+		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
 		std::vector<vk::BufferImageCopy> bufferCopyRegions;
@@ -500,9 +500,9 @@ void vkglTF::Node::update() {
 				mesh->uniformBlock.jointMatrix[i] = jointMat;
 			}
 			mesh->uniformBlock.jointcount = (float)skin->joints.size();
-			memcpy(mesh->uniformBuffer.mapped, &mesh->uniformBlock, sizeof(mesh->uniformBlock));
+			std::copy_n(reinterpret_cast<std::byte*>(&mesh->uniformBlock), sizeof(mesh->uniformBlock), static_cast<std::byte*>(mesh->uniformBuffer.mapped));
 		} else {
-			memcpy(mesh->uniformBuffer.mapped, &m, sizeof(glm::mat4));
+			std::copy_n(reinterpret_cast<std::byte*>(&m), sizeof(glm::mat4), static_cast<std::byte*>(mesh->uniformBuffer.mapped));
 		}
 	}
 
@@ -529,25 +529,25 @@ std::vector<vk::VertexInputAttributeDescription> vkglTF::Vertex::vertexInputAttr
 vk::PipelineVertexInputStateCreateInfo vkglTF::Vertex::pipelineVertexInputStateCreateInfo;
 
 vk::VertexInputBindingDescription vkglTF::Vertex::inputBindingDescription(uint32_t binding) {
-	return vk::VertexInputBindingDescription({ binding, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX });
+	return vk::VertexInputBindingDescription({ binding, sizeof(Vertex), vk::VertexInputRate::eVertex });
 }
 
 vk::VertexInputAttributeDescription vkglTF::Vertex::inputAttributeDescription(uint32_t binding, uint32_t location, VertexComponent component) {
 	switch (component) {
 		case VertexComponent::Position: 
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos) });
 		case VertexComponent::Normal:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal) });
 		case VertexComponent::UV:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32Sfloat, offsetof(Vertex, uv) });
 		case VertexComponent::Color:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, color) });
 		case VertexComponent::Tangent:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, tangent)} );
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, tangent)} );
 		case VertexComponent::Joint0:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, joint0) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, joint0) });
 		case VertexComponent::Weight0:
-			return vk::VertexInputAttributeDescription({ location, binding, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, weight0) });
+			return vk::VertexInputAttributeDescription({ location, binding, vk::Format::eR32G32B32A32Sfloat, offsetof(Vertex, weight0) });
 		default:
 			return vk::VertexInputAttributeDescription({});
 	}
@@ -615,7 +615,7 @@ void vkglTF::Model::createEmptyTexture(vk::Queue transferQueue)
 	// Copy texture data into staging buffer
 	uint8_t* data;
 	data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
-	memcpy(data, buffer, bufferSize);
+	std::copy_n(buffer, bufferSize, data);
 	device->logicalDevice->unmapMemory(*stagingMemory);
 
 	vk::BufferImageCopy bufferCopyRegion = {};
@@ -863,7 +863,7 @@ void vkglTF::Model::loadNode(vkglTF::Node *parent, const tinygltf::Node &node, u
 				switch (accessor.componentType) {
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
 					uint32_t *buf = new uint32_t[accessor.count];
-					memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(uint32_t));
+					std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(uint32_t), reinterpret_cast<std::byte*>(buf));
 					for (size_t index = 0; index < accessor.count; index++) {
 						indexBuffer.push_back(buf[index] + vertexStart);
 					}
@@ -871,7 +871,7 @@ void vkglTF::Model::loadNode(vkglTF::Node *parent, const tinygltf::Node &node, u
 				}
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
 					uint16_t *buf = new uint16_t[accessor.count];
-					memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(uint16_t));
+					std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(uint16_t), reinterpret_cast<std::byte*>(buf));
 					for (size_t index = 0; index < accessor.count; index++) {
 						indexBuffer.push_back(buf[index] + vertexStart);
 					}
@@ -879,7 +879,7 @@ void vkglTF::Model::loadNode(vkglTF::Node *parent, const tinygltf::Node &node, u
 				}
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
 					uint8_t *buf = new uint8_t[accessor.count];
-					memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(uint8_t));
+					std::copy_n(&buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(uint8_t), buf);
 					for (size_t index = 0; index < accessor.count; index++) {
 						indexBuffer.push_back(buf[index] + vertexStart);
 					}
@@ -931,7 +931,7 @@ void vkglTF::Model::loadSkins(tinygltf::Model &gltfModel)
 			const tinygltf::BufferView &bufferView = gltfModel.bufferViews[accessor.bufferView];
 			const tinygltf::Buffer &buffer = gltfModel.buffers[bufferView.buffer];
 			newSkin->inverseBindMatrices.resize(accessor.count);
-			memcpy(newSkin->inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
+			std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(glm::mat4), reinterpret_cast<std::byte*>(newSkin->inverseBindMatrices.data()));
 		}
 
 		skins.push_back(newSkin);
@@ -1031,7 +1031,7 @@ void vkglTF::Model::loadAnimations(tinygltf::Model &gltfModel)
 				assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
 
 				float *buf = new float[accessor.count];
-				memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(float));
+				std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(float), reinterpret_cast<std::byte*>(buf));
 				for (size_t index = 0; index < accessor.count; index++) {
 					sampler.inputs.push_back(buf[index]);
 				}
@@ -1057,7 +1057,7 @@ void vkglTF::Model::loadAnimations(tinygltf::Model &gltfModel)
 				switch (accessor.type) {
 				case TINYGLTF_TYPE_VEC3: {
 					glm::vec3 *buf = new glm::vec3[accessor.count];
-					memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::vec3));
+					std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(glm::vec3), reinterpret_cast<std::byte*>(buf));
 					for (size_t index = 0; index < accessor.count; index++) {
 						sampler.outputsVec4.push_back(glm::vec4(buf[index], 0.0f));
 					}
@@ -1065,7 +1065,7 @@ void vkglTF::Model::loadAnimations(tinygltf::Model &gltfModel)
 				}
 				case TINYGLTF_TYPE_VEC4: {
 					glm::vec4 *buf = new glm::vec4[accessor.count];
-					memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::vec4));
+					std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]), accessor.count * sizeof(glm::vec4), reinterpret_cast<std::byte*>(buf));
 					for (size_t index = 0; index < accessor.count; index++) {
 						sampler.outputsVec4.push_back(buf[index]);
 					}
@@ -1366,7 +1366,7 @@ void vkglTF::Model::drawNode(Node *node, vk::CommandBuffer commandBuffer, uint32
 				if (renderFlags & RenderFlags::BindImages) {
 					commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, bindImageSet, {material.descriptorSet}, {});
 				}
-				vkCmdDrawIndexed(commandBuffer, primitive->indexCount, 1, primitive->firstIndex, 0, 0);
+				commandBuffer.drawIndexed(primitive->indexCount, 1, primitive->indexCount, 0, 0);
 			}
 		}
 	}
