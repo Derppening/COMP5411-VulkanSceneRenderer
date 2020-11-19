@@ -5,7 +5,7 @@
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 
 #include "main.h"
-constexpr bool ENABLE_VALIDATION = true;
+constexpr bool ENABLE_VALIDATION = false;
 
 vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDATION) {
   title = "Vulkan Scene Renderer";
@@ -112,36 +112,36 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
     vk::UniqueDeviceMemory memory;
   } vertex_staging, index_staging;
 
-  VK_CHECK_RESULT(vulkanDevice->createBuffer(
+  vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
       vertex_buffer_size,
       &vertex_staging.buffer,
       &vertex_staging.memory,
-      vertex_buffer.data()));
+      vertex_buffer.data());
 
   // Index data
-  VK_CHECK_RESULT(vulkanDevice->createBuffer(
+  vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
       index_buffer_size,
       &index_staging.buffer,
       &index_staging.memory,
-      index_buffer.data()));
+      index_buffer.data());
 
   // Create device local buffers (target)
-  VK_CHECK_RESULT(vulkanDevice->createBuffer(
+  vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
       vertex_buffer_size,
       &gltf_scene.vertices.buffer,
-      &gltf_scene.vertices.memory));
-  VK_CHECK_RESULT(vulkanDevice->createBuffer(
+      &gltf_scene.vertices.memory);
+  vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
       index_buffer_size,
       &gltf_scene.indices.buffer,
-      &gltf_scene.indices.memory));
+      &gltf_scene.indices.memory);
 
   // Copy data from staging buffers (host) do device local buffer (gpu)
   vk::UniqueCommandBuffer copyCmd = vulkanDevice->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
@@ -298,11 +298,11 @@ void vulkan_scene_renderer::prepare_pipelines() {
 }
 
 void vulkan_scene_renderer::prepare_uniform_buffers() {
-  VK_CHECK_RESULT(vulkanDevice->createBuffer(
+  vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eUniformBuffer,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
       &shader_data.buffer,
-      sizeof(shader_data.values)));
+      sizeof(shader_data.values));
   shader_data.buffer.map();
   update_uniform_buffers();
 }
@@ -357,7 +357,7 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
 }
 
 int main(int argc, char** argv) {
-  for (std::size_t i = 0; i < argc; ++i) {
+  for (std::size_t i = 0; i < static_cast<std::size_t>(argc); ++i) {
     vulkan_scene_renderer::args.push_back(argv[i]);
   }
   auto app = std::make_unique<vulkan_scene_renderer>();

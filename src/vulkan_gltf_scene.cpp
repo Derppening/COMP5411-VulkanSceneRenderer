@@ -89,7 +89,7 @@ void vulkan_gltf_scene::load_node(const tinygltf::Node& input_node,
   // Load node's children
   if (input_node.children.size() > 0) {
     for (size_t i = 0; i < input_node.children.size(); i++) {
-      load_node(input.nodes[input_node.children[i]], input, &node, index_buffer, vertex_buffer);
+      load_node(input.nodes[static_cast<std::size_t>(input_node.children[i])], input, &node, index_buffer, vertex_buffer);
     }
   }
 

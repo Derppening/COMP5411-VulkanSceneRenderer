@@ -496,7 +496,7 @@ namespace vks
 		// Submit to the queue
 		queue.submit({submitInfo}, *fence);
 		// Wait for the fence to signal that command buffer has finished executing
-		logicalDevice->waitForFences({*fence}, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
+		[[maybe_unused]] auto result = logicalDevice->waitForFences({*fence}, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
 		fence.reset();
 		if (free)
 		{
