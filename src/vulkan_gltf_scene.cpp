@@ -15,7 +15,7 @@ vulkan_gltf_scene::~vulkan_gltf_scene() {
     image.texture.deviceMemory.reset();
   }
   for (vulkan_gltf_scene::material& material : materials) {
-    vkDestroyPipeline(*vulkan_device->logicalDevice, material.pipeline, nullptr);
+    material.pipeline.reset();
   }
 }
 
@@ -240,12 +240,12 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
       current_parent = current_parent->parent;
     }
     // Pass the final matrix to the vertex shader using push constants
-    vkCmdPushConstants(command_buffer,pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &node_matrix);
+    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex, 0, {node_matrix});
     for (const vulkan_gltf_scene::primitive& primitive : node.mesh.primitives) {
       if (primitive.index_count > 0) {
         vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
         // POI: Bind the pipeline for the node's material
-        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipeline);
+        command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *material.pipeline);
         command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 1, {material.descriptor_set}, {});
         vkCmdDrawIndexed(command_buffer, primitive.index_count, 1, primitive.first_index, 0, 0);
       }

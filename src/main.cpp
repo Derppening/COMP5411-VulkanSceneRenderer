@@ -309,7 +309,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
     // For double sided materials, culling will be disabled
     rasterizationStateCI.cullMode = material.double_sided ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eBack;
 
-    material.pipeline = device.createGraphicsPipeline(*pipelineCache, {pipelineCI}).value;
+    material.pipeline = device.createGraphicsPipelineUnique(*pipelineCache, {pipelineCI}).value;
   }
 }
 

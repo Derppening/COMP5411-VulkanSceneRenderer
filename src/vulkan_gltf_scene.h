@@ -58,7 +58,7 @@ class vulkan_gltf_scene {
     float alpha_cutoff;
     bool double_sided = false;
     vk::DescriptorSet descriptor_set;
-    vk::Pipeline pipeline;
+    vk::UniquePipeline pipeline;
   };
 
   struct image {
