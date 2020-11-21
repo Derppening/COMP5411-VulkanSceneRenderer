@@ -5,7 +5,10 @@
 #define TINYGLTF_NO_EXTERNAL_IMAGE
 
 #include "main.h"
-constexpr bool ENABLE_VALIDATION = false;
+
+#include <fmt/format.h>
+
+constexpr bool ENABLE_VALIDATION = true;
 
 vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDATION) {
   title = "Vulkan Scene Renderer";
@@ -22,10 +25,15 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
   shader_data.buffer.destroy();
+  _query_pool_.destroy();
 }
 
 void vulkan_scene_renderer::getEnabledFeatures() {
   enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
+
+  if (query_pool::is_supported(deviceFeatures)) {
+    enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
+  }
 }
 
 void vulkan_scene_renderer::buildCommandBuffers() {
@@ -51,14 +59,22 @@ void vulkan_scene_renderer::buildCommandBuffers() {
   for (std::size_t i = 0; i < drawCmdBuffers.size(); ++i) {
     renderPassBeginInfo.framebuffer = *frameBuffers[i];
     drawCmdBuffers[i]->begin(cmd_buf_info);
+
+    _query_pool_.reset(*drawCmdBuffers[i]);
+
     drawCmdBuffers[i]->beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
     drawCmdBuffers[i]->setViewport(0, {viewport});
     drawCmdBuffers[i]->setScissor(0, {scissor});
+
+    _query_pool_.begin(*drawCmdBuffers[i]);
+
     // Bind scene matrices descriptor to set 0
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
 
     // POI: Draw the glTF scene
     gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+
+    _query_pool_.end(*drawCmdBuffers[i]);
 
     drawUI(*drawCmdBuffers[i]);
     drawCmdBuffers[i]->endRenderPass();
@@ -317,6 +333,7 @@ void vulkan_scene_renderer::update_uniform_buffers() {
 void vulkan_scene_renderer::prepare() {
   VulkanExampleBase::prepare();
   load_assets();
+  _query_pool_.setup(device, enabledFeatures);
   prepare_uniform_buffers();
   setup_descriptors();
   prepare_pipelines();
@@ -325,13 +342,38 @@ void vulkan_scene_renderer::prepare() {
 }
 
 void vulkan_scene_renderer::render() {
-  renderFrame();
+  draw();
   if (camera.updated) {
     update_uniform_buffers();
   }
 }
 
+void vulkan_scene_renderer::draw() {
+  VulkanExampleBase::prepareFrame();
+  if (resized) {
+    resized = false;
+    return;
+  }
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &*drawCmdBuffers[currentBuffer];
+  queue.submit({submitInfo}, {});
+
+  _query_pool_.update_query_results();
+
+  VulkanExampleBase::submitFrame();
+}
+
 void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
+  const auto& pipeline_stats = _query_pool_.query_results();
+  if (!pipeline_stats.empty()) {
+    if (overlay->header("Pipeline statistics")) {
+      for (std::size_t i = 0; i < pipeline_stats.size(); ++i) {
+        const std::string caption = fmt::format("{} : {}", _query_pool_.pipeline_stat_names()[i], pipeline_stats[i]);
+        overlay->text(caption.c_str());
+      }
+    }
+  }
+
   if (overlay->header("Visibility")) {
 
     if (overlay->button("All")) {

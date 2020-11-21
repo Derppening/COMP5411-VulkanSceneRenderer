@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "query_pool.h"
 #include "vulkan_gltf_scene.h"
 #include "vulkanexamplebase.h"
 
@@ -39,5 +40,9 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void update_uniform_buffers();
   void prepare() override;
   void render() override;
+  void draw();
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
+
+ private:
+  query_pool _query_pool_;
 };

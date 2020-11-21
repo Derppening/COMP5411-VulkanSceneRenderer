@@ -1,8 +1,6 @@
 add_executable(VulkanSceneRenderer
-#        maintest.cpp
-#        VulkanglTFScene.cpp)
-#        gltfscenerendering.cpp)
         main.cpp
+        query_pool.cpp
         vulkan_gltf_scene.cpp)
 target_compile_options(VulkanSceneRenderer PUBLIC ${CXX_WARN_FLAGS})
 target_include_directories(VulkanSceneRenderer SYSTEM PUBLIC
