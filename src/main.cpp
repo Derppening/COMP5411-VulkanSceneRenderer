@@ -34,6 +34,9 @@ void vulkan_scene_renderer::getEnabledFeatures() {
   if (query_pool::is_supported(deviceFeatures)) {
     enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
   }
+  if (deviceFeatures.fillModeNonSolid) {
+    enabledFeatures.fillModeNonSolid = VK_TRUE;
+  }
 }
 
 void vulkan_scene_renderer::buildCommandBuffers() {
@@ -250,7 +253,12 @@ void vulkan_scene_renderer::setup_descriptors() {
 
 void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCI = vks::initializers::pipelineInputAssemblyStateCreateInfo(vk::PrimitiveTopology::eTriangleList, {}, VK_FALSE);
+
   vk::PipelineRasterizationStateCreateInfo rasterizationStateCI = vks::initializers::pipelineRasterizationStateCreateInfo(vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise, {});
+  if (_wireframe_) {
+    rasterizationStateCI.polygonMode = vk::PolygonMode::eLine;
+  }
+
   vk::PipelineColorBlendAttachmentState blendAttachmentStateCI = vks::initializers::pipelineColorBlendAttachmentState(vk::ColorComponentFlags{0xf}, VK_FALSE);
   vk::PipelineColorBlendStateCreateInfo colorBlendStateCI = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachmentStateCI);
   vk::PipelineDepthStencilStateCreateInfo depthStencilStateCI = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, vk::CompareOp::eLessOrEqual);
@@ -370,6 +378,15 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       for (std::size_t i = 0; i < pipeline_stats.size(); ++i) {
         const std::string caption = fmt::format("{} : {}", _query_pool_.pipeline_stat_names()[i], pipeline_stats[i]);
         overlay->text(caption.c_str());
+      }
+    }
+  }
+
+  if (overlay->header("Settings")) {
+    if (deviceFeatures.fillModeNonSolid) {
+      if (overlay->checkBox("Wireframe", &_wireframe_)) {
+        prepare_pipelines();
+        buildCommandBuffers();
       }
     }
   }

@@ -44,5 +44,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
 
  private:
+  bool _wireframe_ = false;
+
   query_pool _query_pool_;
 };
