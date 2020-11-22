@@ -24,6 +24,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
+  settings_ubo.buffer.destroy();
   shader_data.buffer.destroy();
   _query_pool_.destroy();
 }
@@ -73,6 +74,8 @@ void vulkan_scene_renderer::buildCommandBuffers() {
 
     // Bind scene matrices descriptor to set 0
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
+    // Bind settings descriptor to set 2
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 2, {settings_ubo.descriptor_set}, {});
 
     // POI: Draw the glTF scene
     gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
@@ -192,9 +195,11 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // One ubo to pass dynamic data to the shader
   // Two combined image samplers per material as each material uses color and normal maps
+  // One more ubo to pass dynamic settings to shader
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
   };
   // One set for matrices and one per model image/texture
   const uint32_t max_set_count = static_cast<uint32_t>(gltf_scene.images.size()) + 1;
@@ -203,7 +208,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Descriptor set layout for passing matrices
   std::vector<vk::DescriptorSetLayoutBinding> set_layout_bindings = {
-      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 0)
+      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 0),
   };
   vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
 
@@ -220,8 +225,20 @@ void vulkan_scene_renderer::setup_descriptors() {
   descriptor_set_layout_ci.bindingCount = 2;
   descriptor_set_layouts.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
 
-  // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material)
-  std::array<vk::DescriptorSetLayout, 2> setLayouts = { *descriptor_set_layouts.matrices, *descriptor_set_layouts.textures };
+  // Descriptor set layout for passing dynamic settings
+  set_layout_bindings = {
+      // Blinn-Phong?
+      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0)
+  };
+  descriptor_set_layout_ci.setBindings(set_layout_bindings);
+  settings_ubo.descriptor_set_layout = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
+
+  // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material, set 2 = settings)
+  std::array<vk::DescriptorSetLayout, 3> setLayouts = {
+      *descriptor_set_layouts.matrices,
+      *descriptor_set_layouts.textures,
+      *settings_ubo.descriptor_set_layout
+  };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
   vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex, sizeof(glm::mat4), 0);
@@ -249,6 +266,12 @@ void vulkan_scene_renderer::setup_descriptors() {
     };
     device.updateDescriptorSets(writeDescriptorSets, {});
   }
+
+  allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*settings_ubo.descriptor_set_layout, 1);
+  settings_ubo.descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
+  vk::DescriptorBufferInfo settings_ubo_buffer_descriptor = settings_ubo.buffer.descriptor;
+  writeDescriptorSet = vks::initializers::writeDescriptorSet(settings_ubo.descriptor_set, vk::DescriptorType::eUniformBuffer, 0, &settings_ubo_buffer_descriptor);
+  device.updateDescriptorSets({writeDescriptorSet}, {});
 }
 
 void vulkan_scene_renderer::prepare_pipelines() {
@@ -329,6 +352,14 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
       sizeof(shader_data.values));
   shader_data.buffer.map();
   update_uniform_buffers();
+
+  vulkanDevice->createBuffer(
+      vk::BufferUsageFlagBits::eUniformBuffer,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+      &settings_ubo.buffer,
+      sizeof(settings_ubo.values));
+  settings_ubo.buffer.map();
+  update_settings_ubo();
 }
 
 void vulkan_scene_renderer::update_uniform_buffers() {
@@ -336,6 +367,12 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   shader_data.values.view = camera.matrices.view;
   shader_data.values.viewPos = camera.viewPos;
   memcpy(shader_data.buffer.mapped, &shader_data.values, sizeof(shader_data.values));
+}
+
+void vulkan_scene_renderer::update_settings_ubo() {
+  std::copy_n(reinterpret_cast<std::byte*>(&settings_ubo.values),
+              sizeof(settings_ubo.values),
+              static_cast<std::byte*>(settings_ubo.buffer.mapped));
 }
 
 void vulkan_scene_renderer::prepare() {
@@ -388,6 +425,10 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
         prepare_pipelines();
         buildCommandBuffers();
       }
+    }
+
+    if (overlay->checkBox("Blinn-Phong", &settings_ubo.values.blinnPhong)) {
+      update_settings_ubo();
     }
   }
 }

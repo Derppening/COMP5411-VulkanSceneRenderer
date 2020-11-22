@@ -28,6 +28,15 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     vk::UniqueDescriptorSetLayout textures;
   } descriptor_set_layouts;
 
+  struct {
+    vks::Buffer buffer;
+    struct {
+      bool blinnPhong = false;
+    } values;
+    vk::UniqueDescriptorSetLayout descriptor_set_layout;
+    vk::DescriptorSet descriptor_set;
+  } settings_ubo;
+
   vulkan_scene_renderer();
   ~vulkan_scene_renderer() override;
   void getEnabledFeatures() override;
@@ -38,6 +47,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void prepare_pipelines();
   void prepare_uniform_buffers();
   void update_uniform_buffers();
+  void update_settings_ubo();
   void prepare() override;
   void render() override;
   void draw();
