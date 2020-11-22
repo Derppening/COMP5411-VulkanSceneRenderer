@@ -390,29 +390,6 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
   }
-
-  if (overlay->header("Visibility")) {
-
-    if (overlay->button("All")) {
-      std::for_each(gltf_scene.nodes.begin(), gltf_scene.nodes.end(), [](vulkan_gltf_scene::node& node) { node.visible = true; });
-      buildCommandBuffers();
-    }
-    ImGui::SameLine();
-    if (overlay->button("None")) {
-      std::for_each(gltf_scene.nodes.begin(), gltf_scene.nodes.end(), [](vulkan_gltf_scene::node& node) { node.visible = false; });
-      buildCommandBuffers();
-    }
-    ImGui::NewLine();
-
-    // POI: Create a list of glTF nodes for visibility toggle
-    ImGui::BeginChild("#nodelist", ImVec2(200.0f, 340.0f), false);
-    for (auto &node : gltf_scene.nodes) {
-      if (overlay->checkBox(node.name.c_str(), &node.visible)) {
-        buildCommandBuffers();
-      }
-    }
-    ImGui::EndChild();
-  }
 }
 
 int main(int argc, char** argv) {
