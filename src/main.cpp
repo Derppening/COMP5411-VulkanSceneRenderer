@@ -446,10 +446,43 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       update_settings_ubo();
     }
 
-    if (overlay->sliderFloat("Light Brightness", &settings_ubo.values.lightIntensity, 0.0f, 1.0f)) {
+    if (overlay->sliderFloat("Min Ambient Intensity", &settings_ubo.values.minAmbientIntensity, 0.0f, 1.0f)) {
       update_settings_ubo();
+    }
 
-      _light_cube_.color() = glm::vec3(settings_ubo.values.lightIntensity);
+    if (overlay->checkBox("Treat Cube as Point Light", &settings_ubo.values.treatAsPointLight)) {
+      update_settings_ubo();
+    }
+
+    if (settings_ubo.values.treatAsPointLight) {
+      if (!std::holds_alternative<float>(_light_properties_)) {
+        _light_properties_.emplace<float>(std::get<vulkan_scene_renderer::directional_light>(_light_properties_).diffuse);
+      }
+
+      auto& intensity = std::get<float>(_light_properties_);
+      if (overlay->sliderFloat("Light Intensity", &intensity, 0.0f, 1.0f)) {
+        settings_ubo.values.diffuseIntensity = intensity;
+        settings_ubo.values.specularIntensity = intensity;
+        update_settings_ubo();
+      }
+    } else {
+      if (!std::holds_alternative<directional_light>(_light_properties_)) {
+        float intensity = std::get<float>(_light_properties_);
+        _light_properties_.emplace<directional_light>(directional_light{intensity, intensity});
+      }
+      auto& intensities = std::get<directional_light>(_light_properties_);
+
+      if (overlay->sliderFloat("Diffuse Intensity", &intensities.diffuse, 0.0f, 1.0f)) {
+        settings_ubo.values.diffuseIntensity = intensities.diffuse;
+        update_settings_ubo();
+      }
+
+      if (overlay->sliderFloat("Specular Intensity", &intensities.specular, 0.0f, 1.0f)) {
+        settings_ubo.values.specularIntensity = intensities.specular;
+        update_settings_ubo();
+
+        _light_cube_.color() = glm::vec3(settings_ubo.values.specularIntensity);
+      }
     }
   }
 }

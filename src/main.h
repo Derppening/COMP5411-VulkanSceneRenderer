@@ -1,5 +1,6 @@
 #pragma once
 
+#include <variant>
 #include <vulkan/vulkan.hpp>
 
 #include "light_cube.h"
@@ -32,8 +33,11 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   struct {
     vks::Buffer buffer;
     struct {
-      bool blinnPhong = false;
-      float lightIntensity = 1.0f;
+      float minAmbientIntensity = 0.1f;
+      float diffuseIntensity = 1.0f;
+      float specularIntensity = 1.0f;
+      std::int32_t blinnPhong = 0;
+      std::int32_t treatAsPointLight = 0;
     } values;
     vk::UniqueDescriptorSetLayout descriptor_set_layout;
     vk::DescriptorSet descriptor_set;
@@ -56,8 +60,15 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
 
  private:
+  struct directional_light {
+    float diffuse;
+    float specular;
+  };
+
   bool _wireframe_ = false;
 
   query_pool _query_pool_;
   light_cube _light_cube_;
+
+  std::variant<directional_light, float> _light_properties_;
 };

@@ -14,8 +14,11 @@ layout (set = 0, binding = 0) uniform UBOScene
 	vec4 viewPos;
 } uboScene;
 layout (set = 2, binding = 0) uniform Settings {
-	bool useBlinnPhong;
-	float lightIntensity;
+	float minAmbientIntensity;
+	float diffuseIntensity;
+	float specularIntensity;
+	int useBlinnPhong;
+	int treatAsPointLight;
 } settings;
 
 layout(push_constant) uniform PushConsts {
@@ -42,7 +45,5 @@ void main()
 	vec4 pos = primitive.model * vec4(inPos, 1.0);
 	outLightVec = uboScene.lightPos.xyz - pos.xyz;
 	outViewVec = uboScene.viewPos.xyz - pos.xyz;
-	if (settings.useBlinnPhong) {
-		outHalfwayVec = outLightVec + outViewVec;
-	}
+	outHalfwayVec = outLightVec + outViewVec;
 }
