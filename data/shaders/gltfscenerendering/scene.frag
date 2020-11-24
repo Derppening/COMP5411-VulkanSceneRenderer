@@ -3,11 +3,15 @@
 layout (set = 1, binding = 0) uniform sampler2D samplerColorMap;
 layout (set = 1, binding = 1) uniform sampler2D samplerNormalMap;
 layout (set = 2, binding = 0) uniform Settings {
+	int useBlinnPhong;
+
 	float minAmbientIntensity;
+
+	int treatAsPointLight;
 	float diffuseIntensity;
 	float specularIntensity;
-	int useBlinnPhong;
-	int treatAsPointLight;
+	float pointLightLinear;
+	float pointLightQuad;
 } settings;
 
 layout (location = 0) in vec3 inNormal;
@@ -53,7 +57,7 @@ void main()
 	outFragColor = vec4(diffuse * color.rgb + specular * settings.specularIntensity, color.a);
 	if (settings.treatAsPointLight != 0) {
 		float distance = length(inLightVec);
-		float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+		float attenuation = 1.0 / (1.0 + settings.pointLightLinear * distance + settings.pointLightQuad * (distance * distance));
 		outFragColor = outFragColor * attenuation;
 	}
 }

@@ -362,6 +362,7 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
       &settings_ubo.buffer,
       sizeof(settings_ubo.values));
   settings_ubo.buffer.map();
+  _update_point_light_values();
   update_settings_ubo();
 }
 
@@ -455,36 +456,33 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
     }
 
     if (settings_ubo.values.treatAsPointLight) {
-      if (!std::holds_alternative<float>(_light_properties_)) {
-        _light_properties_.emplace<float>(std::get<vulkan_scene_renderer::directional_light>(_light_properties_).diffuse);
+      if (overlay->sliderFloat("Light Intensity", &settings_ubo.values.diffuseIntensity, 0.0f, 1.0f)) {
+        settings_ubo.values.specularIntensity = settings_ubo.values.diffuseIntensity;
+        _light_cube_.color() = glm::vec3(settings_ubo.values.specularIntensity);
+        update_settings_ubo();
       }
 
-      auto& intensity = std::get<float>(_light_properties_);
-      if (overlay->sliderFloat("Light Intensity", &intensity, 0.0f, 1.0f)) {
-        settings_ubo.values.diffuseIntensity = intensity;
-        settings_ubo.values.specularIntensity = intensity;
+      if (overlay->sliderInt("Light Distance", &_point_light_distance_, 7, 250)) {
+        _update_point_light_values();
         update_settings_ubo();
       }
     } else {
-      if (!std::holds_alternative<directional_light>(_light_properties_)) {
-        float intensity = std::get<float>(_light_properties_);
-        _light_properties_.emplace<directional_light>(directional_light{intensity, intensity});
-      }
-      auto& intensities = std::get<directional_light>(_light_properties_);
-
-      if (overlay->sliderFloat("Diffuse Intensity", &intensities.diffuse, 0.0f, 1.0f)) {
-        settings_ubo.values.diffuseIntensity = intensities.diffuse;
+      if (overlay->sliderFloat("Diffuse Intensity", &settings_ubo.values.diffuseIntensity, 0.0f, 1.0f)) {
         update_settings_ubo();
       }
 
-      if (overlay->sliderFloat("Specular Intensity", &intensities.specular, 0.0f, 1.0f)) {
-        settings_ubo.values.specularIntensity = intensities.specular;
-        update_settings_ubo();
-
+      if (overlay->sliderFloat("Specular Intensity", &settings_ubo.values.specularIntensity, 0.0f, 1.0f)) {
         _light_cube_.color() = glm::vec3(settings_ubo.values.specularIntensity);
+
+        update_settings_ubo();
       }
     }
   }
+}
+
+void vulkan_scene_renderer::_update_point_light_values() {
+  settings_ubo.values.pointLightLinear = static_cast<float>(4.690508 * std::pow(_point_light_distance_, -1.009712));
+  settings_ubo.values.pointLightQuad = static_cast<float>(82.444779 * std::pow(_point_light_distance_, -2.019206));
 }
 
 int main(int argc, char** argv) {

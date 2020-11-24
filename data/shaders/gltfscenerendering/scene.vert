@@ -14,11 +14,15 @@ layout (set = 0, binding = 0) uniform UBOScene
 	vec4 viewPos;
 } uboScene;
 layout (set = 2, binding = 0) uniform Settings {
+	int useBlinnPhong;
+
 	float minAmbientIntensity;
+
+	int treatAsPointLight;
 	float diffuseIntensity;
 	float specularIntensity;
-	int useBlinnPhong;
-	int treatAsPointLight;
+	float pointLightLinear;
+	float pointLightQuad;
 } settings;
 
 layout(push_constant) uniform PushConsts {

@@ -33,11 +33,15 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   struct {
     vks::Buffer buffer;
     struct {
+      std::int32_t blinnPhong = 0;
+
       float minAmbientIntensity = 0.1f;
+
+      std::int32_t treatAsPointLight = 0;
       float diffuseIntensity = 1.0f;
       float specularIntensity = 1.0f;
-      std::int32_t blinnPhong = 0;
-      std::int32_t treatAsPointLight = 0;
+      float pointLightLinear = 0.22f;
+      float pointLightQuad = 0.20f;
     } values;
     vk::UniqueDescriptorSetLayout descriptor_set_layout;
     vk::DescriptorSet descriptor_set;
@@ -65,10 +69,12 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     float specular;
   };
 
+  void _update_point_light_values();
+
   bool _wireframe_ = false;
 
   query_pool _query_pool_;
   light_cube _light_cube_;
 
-  std::variant<directional_light, float> _light_properties_;
+  int _point_light_distance_ = 50;
 };
