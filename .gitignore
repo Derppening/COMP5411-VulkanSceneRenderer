@@ -194,6 +194,7 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,clion,cmake
 
-data/
-!data/shaders
+data/*
+!data/README.md
+!data/shaders/
 
