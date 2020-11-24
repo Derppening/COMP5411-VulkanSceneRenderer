@@ -15,6 +15,7 @@ layout (set = 0, binding = 0) uniform UBOScene
 } uboScene;
 layout (set = 2, binding = 0) uniform Settings {
 	bool useBlinnPhong;
+	float lightIntensity;
 } settings;
 
 layout(push_constant) uniform PushConsts {

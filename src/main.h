@@ -33,6 +33,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     vks::Buffer buffer;
     struct {
       bool blinnPhong = false;
+      float lightIntensity = 1.0f;
     } values;
     vk::UniqueDescriptorSetLayout descriptor_set_layout;
     vk::DescriptorSet descriptor_set;

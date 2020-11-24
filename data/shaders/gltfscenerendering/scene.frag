@@ -4,6 +4,7 @@ layout (set = 1, binding = 0) uniform sampler2D samplerColorMap;
 layout (set = 1, binding = 1) uniform sampler2D samplerNormalMap;
 layout (set = 2, binding = 0) uniform Settings {
 	bool useBlinnPhong;
+	float lightIntensity;
 } settings;
 
 layout (location = 0) in vec3 inNormal;
@@ -47,5 +48,5 @@ void main()
 	} else {
 		specular = pow(max(dot(R, V), 0.0), 32.0);
 	}
-	outFragColor = vec4(diffuse * color.rgb + specular, color.a);
+	outFragColor = vec4(diffuse * color.rgb + specular * settings.lightIntensity, color.a);
 }

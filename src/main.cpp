@@ -445,6 +445,12 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
     if (overlay->checkBox("Blinn-Phong", &settings_ubo.values.blinnPhong)) {
       update_settings_ubo();
     }
+
+    if (overlay->sliderFloat("Light Brightness", &settings_ubo.values.lightIntensity, 0.0f, 1.0f)) {
+      update_settings_ubo();
+
+      _light_cube_.color() = glm::vec3(settings_ubo.values.lightIntensity);
+    }
   }
 }
 
