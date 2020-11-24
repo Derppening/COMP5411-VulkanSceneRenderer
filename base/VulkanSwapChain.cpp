@@ -87,6 +87,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	for (uint32_t i = 0; i < queueCount; i++) 
 	{
 		supportsPresent[i] = physicalDevice.getSurfaceSupportKHR(i, *this->surface, vks::dynamicDispatchLoader);
+//        supportsPresent[i] = physicalDevice.getSurfaceSupportKHR(i, *this->surface);
 	}
 
 	// Search for a graphics and a present queue in the array of queue
@@ -140,6 +141,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 
 	// Get list of supported surface formats
 	std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(*this->surface, vks::dynamicDispatchLoader);
+//    std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(*this->surface);
     uint32_t formatCount = surfaceFormats.size();
 
 	// If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
@@ -204,9 +206,11 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 
 	// Get physical device surface properties and formats
 	vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(*surface, vks::dynamicDispatchLoader);
+//    vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(*surface);
 
 	// Get available present modes
 	std::vector<vk::PresentModeKHR> presentModes = physicalDevice.getSurfacePresentModesKHR(*surface, vks::dynamicDispatchLoader);
+//    std::vector<vk::PresentModeKHR> presentModes = physicalDevice.getSurfacePresentModesKHR(*surface);
     uint32_t presentModeCount = presentModes.size();
 
 	vk::Extent2D swapchainExtent = {};
@@ -326,9 +330,11 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 	}
 
     swapChain = device.createSwapchainKHRUnique(swapchainCI, nullptr, vks::dynamicDispatchLoader);
+//    swapChain = device.createSwapchainKHRUnique(swapchainCI);
 
-	// Get the swap chain images
+  // Get the swap chain images
 	images = device.getSwapchainImagesKHR(*swapChain, vks::dynamicDispatchLoader);
+//    images = device.getSwapchainImagesKHR(*swapChain);
 	imageCount = images.size();
 
 	// Get the swap chain buffers containing the image and imageview
@@ -375,6 +381,7 @@ vk::Result VulkanSwapChain::acquireNextImage(vk::Semaphore presentCompleteSemaph
 	// By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
 	// With that we don't have to handle VK_NOT_READY
 	auto result = device.acquireNextImageKHR(*swapChain, UINT64_MAX, presentCompleteSemaphore, {}, vks::dynamicDispatchLoader);
+//	auto result = device.acquireNextImageKHR(*swapChain, UINT64_MAX, presentCompleteSemaphore, {});
 	*imageIndex = result.value;
 	return result.result;
 }

@@ -21,6 +21,7 @@ vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDA
 }
 
 vulkan_scene_renderer::~vulkan_scene_renderer() {
+  _light_cube_.destroy();
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
@@ -79,6 +80,8 @@ void vulkan_scene_renderer::buildCommandBuffers() {
 
     // POI: Draw the glTF scene
     gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+
+    _light_cube_.draw(*drawCmdBuffers[i]);
 
     _query_pool_.end(*drawCmdBuffers[i]);
 
@@ -367,6 +370,14 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   shader_data.values.view = camera.matrices.view;
   shader_data.values.viewPos = camera.viewPos;
   memcpy(shader_data.buffer.mapped, &shader_data.values, sizeof(shader_data.values));
+
+  _light_cube_.projection() = camera.matrices.perspective;
+  _light_cube_.view() = camera.matrices.view;
+  _light_cube_.model() = glm::mat4{1.0f};
+  _light_cube_.model() = glm::translate(_light_cube_.model(), glm::vec3{shader_data.values.lightPos});
+  _light_cube_.model() = glm::scale(_light_cube_.model(), glm::vec3{0.2f});
+
+  _light_cube_.update_uniform_buffers();
 }
 
 void vulkan_scene_renderer::update_settings_ubo() {
@@ -379,6 +390,7 @@ void vulkan_scene_renderer::prepare() {
   VulkanExampleBase::prepare();
   load_assets();
   _query_pool_.setup(device, enabledFeatures);
+  _light_cube_.setup(*this);
   prepare_uniform_buffers();
   setup_descriptors();
   prepare_pipelines();
@@ -422,6 +434,9 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   if (overlay->header("Settings")) {
     if (deviceFeatures.fillModeNonSolid) {
       if (overlay->checkBox("Wireframe", &_wireframe_)) {
+        _light_cube_.wireframe() = _wireframe_;
+        _light_cube_.prepare_pipeline();
+
         prepare_pipelines();
         buildCommandBuffers();
       }

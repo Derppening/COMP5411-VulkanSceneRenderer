@@ -1,5 +1,6 @@
 add_executable(VulkanSceneRenderer
         main.cpp
+        light_cube.cpp
         query_pool.cpp
         vulkan_gltf_scene.cpp)
 target_compile_options(VulkanSceneRenderer PUBLIC ${CXX_WARN_FLAGS})

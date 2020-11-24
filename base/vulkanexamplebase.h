@@ -88,7 +88,7 @@ private:
 	void setupSwapChain();
 	void createCommandBuffers();
 	void destroyCommandBuffers();
-protected:
+public:
 	// Returns the path to the root of the glsl or hlsl shader directory.
 	std::string getShadersPath() const;
 
@@ -150,7 +150,7 @@ protected:
 		vk::UniqueSemaphore renderComplete;
 	} semaphores;
 	std::vector<vk::UniqueFence> waitFences;
-public:
+
 	bool prepared = false;
 	bool resized = false;
 	uint32_t width = 1280;

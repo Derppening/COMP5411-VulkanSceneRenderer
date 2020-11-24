@@ -37,6 +37,7 @@ public:
 	vk::Format colorFormat;
 	vk::ColorSpaceKHR colorSpace;
 	vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderDynamic> swapChain;
+//    vk::UniqueSwapchainKHR swapChain;
 	uint32_t imageCount;
 	std::vector<vk::Image> images;
 	std::vector<SwapChainBuffer> buffers;

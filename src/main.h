@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "light_cube.h"
 #include "query_pool.h"
 #include "vulkan_gltf_scene.h"
 #include "vulkanexamplebase.h"
@@ -57,4 +58,5 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   bool _wireframe_ = false;
 
   query_pool _query_pool_;
+  light_cube _light_cube_;
 };

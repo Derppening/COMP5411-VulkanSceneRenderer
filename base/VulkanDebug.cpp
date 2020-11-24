@@ -7,7 +7,7 @@
 */
 
 #include "VulkanDebug.h"
-#include <iostream>
+#include <fmt/format.h>
 #include "VulkanTools.h"
 
 namespace vks
@@ -24,34 +24,17 @@ namespace vks
 			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 			void* pUserData)
 		{
-			// Select prefix depending on flags passed to the callback
-			std::string prefix("");
+            FILE* outfile = stdout;
+            if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+              outfile = stderr;
+            }
 
-			if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-				prefix = "VERBOSE: ";
-			}
-			else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-				prefix = "INFO: ";
-			}
-			else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-				prefix = "WARNING: ";
-			}
-			else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-				prefix = "ERROR: ";
-			}
+            fmt::print(outfile, "Validation Layer: [{}]{} {}\n",
+                       vk::to_string(vk::DebugUtilsMessageSeverityFlagBitsEXT(messageSeverity)),
+                       vk::to_string(vk::DebugUtilsMessageTypeFlagsEXT(messageType)),
+                       pCallbackData->pMessage);
 
-
-			// Display message to default output (console/logcat)
-			std::stringstream debugMessage;
-			debugMessage << prefix << "[" << pCallbackData->messageIdNumber << "][" << pCallbackData->pMessageIdName << "] : " << pCallbackData->pMessage;
-
-			if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-				std::cerr << debugMessage.str() << "\n";
-			} else {
-				std::cout << debugMessage.str() << "\n";
-			}
-			fflush(stdout);
-
+            return VK_FALSE;
 
 			// The return value of this callback controls whether the Vulkan call that caused the validation message will be aborted or not
 			// We return VK_FALSE as we DON'T want Vulkan calls that cause a validation message to abort
