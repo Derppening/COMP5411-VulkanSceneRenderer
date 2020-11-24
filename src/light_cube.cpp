@@ -42,14 +42,7 @@ void light_cube::setup(VulkanExampleBase& app) {
   staging_index_buffer.destroy();
 
   // Prepare uniform buffers
-  _app_->vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eUniformBuffer,
-                                    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                                    &_uniform_buffer_,
-                                    sizeof(_ubo_));
-
-  _uniform_buffer_.map();
-
-  update_uniform_buffers();
+  _ubo_.prepare(*_app_->vulkanDevice);
 
   _setup_descriptor_set_layout();
   prepare_pipeline();
@@ -61,38 +54,29 @@ void light_cube::destroy() {
   _pipeline_.reset();
 
   _pipeline_layout_.reset();
-  _descriptor_set_layout_.reset();
 
-  _uniform_buffer_.destroy();
+  _ubo_.destroy();
 }
 
 void light_cube::draw(vk::CommandBuffer command_buffer) {
   command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipeline_);
   command_buffer.bindVertexBuffers(0, {*_vertex_buffer_.buffer}, {0});
   command_buffer.bindIndexBuffer(*_index_buffer_.buffer, 0, vk::IndexType::eUint16);
-  command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 0, {_descriptor_set_}, {});
+  command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 0, {_ubo_.descriptor_set()}, {});
   command_buffer.pushConstants<push_consts>(*_pipeline_layout_, vk::ShaderStageFlagBits::eFragment, 0, {_push_consts_});
   command_buffer.drawIndexed(_cube_indices.size(), 1, 0, 0, 0);
 }
 
 void light_cube::_setup_descriptor_set_layout() {
-  const auto set_layout_bindings = std::vector{
-      // Binding 0: Vertex shader uniform buffer
-      vks::initializers::descriptorSetLayoutBinding(
-          vk::DescriptorType::eUniformBuffer,
-          vk::ShaderStageFlagBits::eVertex,
-          0)
-  };
-
-  auto descriptor_layout = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings);
-  _descriptor_set_layout_ = _app_->device.createDescriptorSetLayoutUnique(descriptor_layout);
+  _ubo_.setup_descriptor_set_layout(_app_->device, vk::ShaderStageFlagBits::eVertex);
 
   vk::PushConstantRange push_constant_range;
   push_constant_range.stageFlags = vk::ShaderStageFlagBits::eFragment;
   push_constant_range.offset = 0;
   push_constant_range.size = sizeof(_push_consts_);
 
-  auto pipeline_layout_create_info = vks::initializers::pipelineLayoutCreateInfo(&*_descriptor_set_layout_, 1);
+  auto set_layouts = std::array{_ubo_.descriptor_set_layout()};
+  auto pipeline_layout_create_info = vks::initializers::pipelineLayoutCreateInfo(set_layouts.data(), set_layouts.size());
   pipeline_layout_create_info.pushConstantRangeCount = 1;
   pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
   _pipeline_layout_ = _app_->device.createPipelineLayoutUnique(pipeline_layout_create_info);
@@ -162,17 +146,9 @@ void light_cube::_setup_descriptor_pool() {
 }
 
 void light_cube::_setup_descriptor_set() {
-  auto alloc_info = vks::initializers::descriptorSetAllocateInfo(*_descriptor_pool_, &*_descriptor_set_layout_, 1);
-  _descriptor_set_ = _app_->device.allocateDescriptorSets(alloc_info)[0];
-
-  const auto write_descriptor_set = vks::initializers::writeDescriptorSet(
-      _descriptor_set_,
-      vk::DescriptorType::eUniformBuffer,
-      0,
-      &_uniform_buffer_.descriptor);
-  _app_->device.updateDescriptorSets({write_descriptor_set}, {});
+  _ubo_.setup_descriptor_sets(_app_->device, *_descriptor_pool_);
 }
 
 void light_cube::update_uniform_buffers() {
-  std::copy_n(reinterpret_cast<std::byte*>(&_ubo_), sizeof(_ubo_), static_cast<std::byte*>(_uniform_buffer_.mapped));
+  _ubo_.update();
 }

@@ -25,7 +25,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
-  settings_ubo.buffer.destroy();
+  _settings_ubo_.destroy();
   shader_data.buffer.destroy();
   _query_pool_.destroy();
 }
@@ -76,7 +76,7 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     // Bind scene matrices descriptor to set 0
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
     // Bind settings descriptor to set 2
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 2, {settings_ubo.descriptor_set}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 2, {_settings_ubo_.descriptor_set()}, {});
 
     // POI: Draw the glTF scene
     gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
@@ -196,13 +196,11 @@ void vulkan_scene_renderer::setup_descriptors() {
 		This sample uses separate descriptor sets (and layouts) for the matrices and materials (textures)
 	*/
 
-  // One ubo to pass dynamic data to the shader
+  // One ubo to pass dynamic data to the shader, one for settings, one of dir light and one for point light
   // Two combined image samplers per material as each material uses color and normal maps
-  // One more ubo to pass dynamic settings to shader
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 4),
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
   };
   // One set for matrices and one per model image/texture
   const uint32_t max_set_count = static_cast<uint32_t>(gltf_scene.images.size()) + 1;
@@ -229,18 +227,13 @@ void vulkan_scene_renderer::setup_descriptors() {
   descriptor_set_layouts.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
 
   // Descriptor set layout for passing dynamic settings
-  set_layout_bindings = {
-      // Blinn-Phong?
-      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0)
-  };
-  descriptor_set_layout_ci.setBindings(set_layout_bindings);
-  settings_ubo.descriptor_set_layout = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
+  _settings_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
   // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material, set 2 = settings)
   std::array<vk::DescriptorSetLayout, 3> setLayouts = {
       *descriptor_set_layouts.matrices,
       *descriptor_set_layouts.textures,
-      *settings_ubo.descriptor_set_layout
+      _settings_ubo_.descriptor_set_layout()
   };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
@@ -270,11 +263,7 @@ void vulkan_scene_renderer::setup_descriptors() {
     device.updateDescriptorSets(writeDescriptorSets, {});
   }
 
-  allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*settings_ubo.descriptor_set_layout, 1);
-  settings_ubo.descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
-  vk::DescriptorBufferInfo settings_ubo_buffer_descriptor = settings_ubo.buffer.descriptor;
-  writeDescriptorSet = vks::initializers::writeDescriptorSet(settings_ubo.descriptor_set, vk::DescriptorType::eUniformBuffer, 0, &settings_ubo_buffer_descriptor);
-  device.updateDescriptorSets({writeDescriptorSet}, {});
+  _settings_ubo_.setup_descriptor_sets(device, *descriptorPool);
 }
 
 void vulkan_scene_renderer::prepare_pipelines() {
@@ -354,16 +343,11 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
       &shader_data.buffer,
       sizeof(shader_data.values));
   shader_data.buffer.map();
-  update_uniform_buffers();
 
-  vulkanDevice->createBuffer(
-      vk::BufferUsageFlagBits::eUniformBuffer,
-      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-      &settings_ubo.buffer,
-      sizeof(settings_ubo.values));
-  settings_ubo.buffer.map();
+  _settings_ubo_.prepare(*vulkanDevice, false);
   _update_point_light_values();
-  update_settings_ubo();
+
+  update_uniform_buffers();
 }
 
 void vulkan_scene_renderer::update_uniform_buffers() {
@@ -372,6 +356,8 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   shader_data.values.viewPos = camera.viewPos;
   memcpy(shader_data.buffer.mapped, &shader_data.values, sizeof(shader_data.values));
 
+  _settings_ubo_.update();
+
   _light_cube_.projection() = camera.matrices.perspective;
   _light_cube_.view() = camera.matrices.view;
   _light_cube_.model() = glm::mat4{1.0f};
@@ -379,12 +365,6 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   _light_cube_.model() = glm::scale(_light_cube_.model(), glm::vec3{0.2f});
 
   _light_cube_.update_uniform_buffers();
-}
-
-void vulkan_scene_renderer::update_settings_ubo() {
-  std::copy_n(reinterpret_cast<std::byte*>(&settings_ubo.values),
-              sizeof(settings_ubo.values),
-              static_cast<std::byte*>(settings_ubo.buffer.mapped));
 }
 
 void vulkan_scene_renderer::prepare() {
@@ -443,46 +423,45 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (overlay->checkBox("Blinn-Phong", &settings_ubo.values.blinnPhong)) {
-      update_settings_ubo();
+    if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
+      _settings_ubo_.update();
     }
 
-    if (overlay->sliderFloat("Min Ambient Intensity", &settings_ubo.values.minAmbientIntensity, 0.0f, 1.0f)) {
-      update_settings_ubo();
+    if (overlay->sliderFloat("Min Ambient Intensity", &_settings_ubo_.values().minAmbientIntensity, 0.0f, 1.0f)) {
+      _settings_ubo_.update();
     }
 
-    if (overlay->checkBox("Treat Cube as Point Light", &settings_ubo.values.treatAsPointLight)) {
-      update_settings_ubo();
+    if (overlay->checkBox("Treat Cube as Point Light", &_settings_ubo_.values().treatAsPointLight)) {
+      _settings_ubo_.update();
     }
 
-    if (settings_ubo.values.treatAsPointLight) {
-      if (overlay->sliderFloat("Light Intensity", &settings_ubo.values.diffuseIntensity, 0.0f, 1.0f)) {
-        settings_ubo.values.specularIntensity = settings_ubo.values.diffuseIntensity;
-        _light_cube_.color() = glm::vec3(settings_ubo.values.specularIntensity);
-        update_settings_ubo();
+    if (_settings_ubo_.values().treatAsPointLight) {
+      if (overlay->sliderFloat("Light Intensity", &_settings_ubo_.values().diffuseIntensity, 0.0f, 1.0f)) {
+        _settings_ubo_.values().specularIntensity = _settings_ubo_.values().diffuseIntensity;
+        _light_cube_.color() = glm::vec3(_settings_ubo_.values().specularIntensity);
+        _settings_ubo_.update();
       }
 
       if (overlay->sliderInt("Light Distance", &_point_light_distance_, 7, 250)) {
         _update_point_light_values();
-        update_settings_ubo();
+        _settings_ubo_.update();
       }
     } else {
-      if (overlay->sliderFloat("Diffuse Intensity", &settings_ubo.values.diffuseIntensity, 0.0f, 1.0f)) {
-        update_settings_ubo();
+      if (overlay->sliderFloat("Diffuse Intensity", &_settings_ubo_.values().diffuseIntensity, 0.0f, 1.0f)) {
+        _settings_ubo_.update();
       }
 
-      if (overlay->sliderFloat("Specular Intensity", &settings_ubo.values.specularIntensity, 0.0f, 1.0f)) {
-        _light_cube_.color() = glm::vec3(settings_ubo.values.specularIntensity);
-
-        update_settings_ubo();
+      if (overlay->sliderFloat("Specular Intensity", &_settings_ubo_.values().specularIntensity, 0.0f, 1.0f)) {
+        _light_cube_.color() = glm::vec3(_settings_ubo_.values().specularIntensity);
+        _settings_ubo_.update();
       }
     }
   }
 }
 
 void vulkan_scene_renderer::_update_point_light_values() {
-  settings_ubo.values.pointLightLinear = static_cast<float>(4.690508 * std::pow(_point_light_distance_, -1.009712));
-  settings_ubo.values.pointLightQuad = static_cast<float>(82.444779 * std::pow(_point_light_distance_, -2.019206));
+  _settings_ubo_.values().pointLightLinear = static_cast<float>(4.690508 * std::pow(_point_light_distance_, -1.009712));
+  _settings_ubo_.values().pointLightQuad = static_cast<float>(82.444779 * std::pow(_point_light_distance_, -2.019206));
 }
 
 int main(int argc, char** argv) {

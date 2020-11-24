@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "ubo.h"
+
 class light_cube {
  public:
   explicit light_cube(glm::mat4 projection = glm::mat4{}, glm::mat4 model = glm::mat4{}, glm::mat4 view = glm::mat4{});
@@ -14,9 +16,9 @@ class light_cube {
   void destroy();
 
   bool& wireframe() { return _wireframe_; }
-  glm::mat4& projection() { return _ubo_.projection; }
-  glm::mat4& model() { return _ubo_.model; }
-  glm::mat4& view() { return _ubo_.view; }
+  glm::mat4& projection() { return _ubo_.values().projection; }
+  glm::mat4& model() { return _ubo_.values().model; }
+  glm::mat4& view() { return _ubo_.values().view; }
   glm::vec3& color() { return _push_consts_.color; }
 
   void prepare_pipeline();
@@ -77,52 +79,10 @@ class light_cube {
       0.5f, -0.5f, 0.5f,
       0.5f, 0.5f, -0.5f,
       0.5f, 0.5f, 0.5f,
-
-/*      -0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f,  0.5f, -0.5f,
-      0.5f,  0.5f, -0.5f,
-      -0.5f,  0.5f, -0.5f,
-      -0.5f, -0.5f, -0.5f,
-
-      -0.5f, -0.5f,  0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      -0.5f, -0.5f,  0.5f,
-
-      -0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f, -0.5f,
-      -0.5f, -0.5f, -0.5f,
-      -0.5f, -0.5f, -0.5f,
-      -0.5f, -0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-
-      -0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f, -0.5f,
-      0.5f, -0.5f,  0.5f,
-      0.5f, -0.5f,  0.5f,
-      -0.5f, -0.5f,  0.5f,
-      -0.5f, -0.5f, -0.5f,
-
-      -0.5f,  0.5f, -0.5f,
-      0.5f,  0.5f, -0.5f,
-      0.5f,  0.5f,  0.5f,
-      0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f,  0.5f,
-      -0.5f,  0.5f, -0.5f,*/
  };
 
   bool _wireframe_ = false;
-  VulkanExampleBase* _app_;
+  VulkanExampleBase* _app_ = nullptr;
 
   void _setup_descriptor_set_layout();
   void _setup_descriptor_pool();
@@ -130,13 +90,14 @@ class light_cube {
 
   vks::Buffer _vertex_buffer_;
   vks::Buffer _index_buffer_;
-  vks::Buffer _uniform_buffer_;
 
-  struct ubo {
+  struct mvp {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection;
-  } _ubo_;
+  };
+
+  ubo<mvp> _ubo_;
 
   struct push_consts {
     glm::vec3 color = glm::vec3{1.0, 1.0, 1.0};
@@ -145,6 +106,4 @@ class light_cube {
   vk::UniquePipeline _pipeline_;
   vk::UniquePipelineLayout _pipeline_layout_;
   vk::UniqueDescriptorPool _descriptor_pool_;
-  vk::DescriptorSet _descriptor_set_;
-  vk::UniqueDescriptorSetLayout _descriptor_set_layout_;
 };
