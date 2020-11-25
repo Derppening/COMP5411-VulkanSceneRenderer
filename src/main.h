@@ -2,7 +2,9 @@
 
 #include <vulkan/vulkan.hpp>
 
+//#include "dir_light.h"
 #include "light_cube.h"
+#include "light_ubo.h"
 #include "query_pool.h"
 #include "ubo.h"
 #include "vulkan_gltf_scene.h"
@@ -29,58 +31,6 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     vk::UniqueDescriptorSetLayout matrices;
     vk::UniqueDescriptorSetLayout textures;
   } descriptor_set_layouts;
-
-  /*struct {
-    vks::Buffer buffer;
-    struct {
-      std::int32_t blinnPhong = 0;
-
-      float minAmbientIntensity = 0.1f;
-
-      std::int32_t treatAsPointLight = 0;
-      float diffuseIntensity = 1.0f;
-      float specularIntensity = 1.0f;
-      float pointLightLinear = 0.22f;
-      float pointLightQuad = 0.20f;
-
-      int useFlashlight = 0;
-      float flashlightCutoff = glm::cos(glm::radians(12.5f));
-      float flashlightOuterCutoff = glm::cos(glm::radians(17.5f));
-    } values;
-    vk::UniqueDescriptorSetLayout descriptor_set_layout;
-    vk::DescriptorSet descriptor_set;
-  } settings_ubo;
-
-  struct dir_light_ubo {
-    vks::Buffer buffer;
-    struct {
-      float ambient = 0.05f;
-      float diffuse = 0.4f;
-      float specular = 0.5f;
-    } values;
-    vk::UniqueDescriptorSetLayout descriptor_set_layout;
-    vk::DescriptorSet descriptor_set;
-
-    void update();
-  } dir_light_ubo;
-
-  struct point_light_ubo {
-    vks::Buffer buffer;
-    struct {
-      glm::vec3 position;
-      float ambient = 0.05f;
-      float diffuse = 0.8f;
-      float specular = 1.0f;
-      float linear = 0.22f;
-      float quad = 0.20f;
-    } values;
-    vk::UniqueDescriptorSetLayout descriptor_set_layout;
-    vk::DescriptorSet descriptor_set;
-
-    void setup_descriptor_set_layout(vk::Device device);
-    void setup_descriptor_set();
-    void update();
-  } point_light_ubo;*/
 
   vulkan_scene_renderer();
   ~vulkan_scene_renderer() override;
@@ -117,6 +67,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void _update_point_light_values();
 
   ubo<_settings> _settings_ubo_;
+  light_ubo _light_ubo_;
 
   bool _wireframe_ = false;
 

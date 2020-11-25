@@ -36,6 +36,7 @@ layout (location = 3) out vec3 outViewVec;
 layout (location = 4) out vec3 outLightVec;
 layout (location = 5) out vec3 outHalfwayVec;
 layout (location = 6) out vec4 outTangent;
+layout (location = 7) out vec3 outFragPos;
 
 void main() 
 {
@@ -47,6 +48,7 @@ void main()
 	
 	outNormal = mat3(primitive.model) * inNormal;
 	vec4 pos = primitive.model * vec4(inPos, 1.0);
+	outFragPos = pos.xyz;
 	outLightVec = uboScene.lightPos.xyz - pos.xyz;
 	outViewVec = uboScene.viewPos.xyz - pos.xyz;
 	outHalfwayVec = outLightVec + outViewVec;

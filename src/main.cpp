@@ -25,6 +25,8 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
+//  _dir_light_ubo_.destroy();
+  _light_ubo_.destroy();
   _settings_ubo_.destroy();
   shader_data.buffer.destroy();
   _query_pool_.destroy();
@@ -77,6 +79,7 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
     // Bind settings descriptor to set 2
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 2, {_settings_ubo_.descriptor_set()}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 3, {_light_ubo_.descriptor_set()}, {});
 
     // POI: Draw the glTF scene
     gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
@@ -199,7 +202,8 @@ void vulkan_scene_renderer::setup_descriptors() {
   // One ubo to pass dynamic data to the shader, one for settings, one of dir light and one for point light
   // Two combined image samplers per material as each material uses color and normal maps
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 4),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 8),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 8),
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
   };
   // One set for matrices and one per model image/texture
@@ -229,11 +233,14 @@ void vulkan_scene_renderer::setup_descriptors() {
   // Descriptor set layout for passing dynamic settings
   _settings_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
+  _light_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eFragment);
+
   // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material, set 2 = settings)
-  std::array<vk::DescriptorSetLayout, 3> setLayouts = {
+  auto setLayouts = std::array{
       *descriptor_set_layouts.matrices,
       *descriptor_set_layouts.textures,
-      _settings_ubo_.descriptor_set_layout()
+      _settings_ubo_.descriptor_set_layout(),
+      _light_ubo_.descriptor_set_layout()
   };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
@@ -264,6 +271,8 @@ void vulkan_scene_renderer::setup_descriptors() {
   }
 
   _settings_ubo_.setup_descriptor_sets(device, *descriptorPool);
+
+  _light_ubo_.setup_descriptor_sets(device, *descriptorPool);
 }
 
 void vulkan_scene_renderer::prepare_pipelines() {
@@ -347,6 +356,40 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
   _settings_ubo_.prepare(*vulkanDevice, false);
   _update_point_light_values();
 
+  _light_ubo_.prepare(*vulkanDevice, false);
+  _light_ubo_.values().settings = {
+      1.0f,
+      1.0f,
+      1.0f
+  };
+  _light_ubo_.values().dir_light = {
+      glm::vec4{-0.2f, -1.0f, -0.3f, 1.0f},
+      glm::vec4{0.05f, 0.05f, 0.05f, 1.0f},
+      glm::vec4{0.4f, 0.4f, 0.4f, 1.0f},
+      glm::vec4{0.5f, 0.5f, 0.5f, 1.0f}
+  };
+  _light_ubo_.values().point_light = {
+      shader_data.values.lightPos,
+      1.0f,
+      _settings_ubo_.values().pointLightLinear,
+      _settings_ubo_.values().pointLightQuad,
+      glm::vec4{glm::vec3{_settings_ubo_.values().minAmbientIntensity}, 1.0f},
+      glm::vec4{glm::vec3{_settings_ubo_.values().diffuseIntensity}, 1.0f},
+      glm::vec4{glm::vec3{_settings_ubo_.values().specularIntensity}, 1.0f}
+  };
+  _light_ubo_.values().spot_light = {
+      glm::vec4{camera.position, 1.0f},
+      camera.viewPos,
+      glm::cos(glm::radians(12.5f)),
+      glm::cos(glm::radians(17.5f)),
+      1.0f,
+      _settings_ubo_.values().pointLightLinear,
+      _settings_ubo_.values().pointLightQuad,
+      glm::vec4{0.0f},
+      glm::vec4{1.0f},
+      glm::vec4{1.0f}
+  };
+
   update_uniform_buffers();
 }
 
@@ -357,6 +400,18 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   memcpy(shader_data.buffer.mapped, &shader_data.values, sizeof(shader_data.values));
 
   _settings_ubo_.update();
+
+  auto& spot_light = _light_ubo_.values().spot_light;
+  spot_light.position = glm::vec4{camera.position, 1.0f};
+
+  glm::vec4 direction = glm::vec4{0.0f};
+  float flipY = camera.flipY ? -1.0f : 1.0f;
+  direction.z = -glm::cos(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
+  direction.x = glm::sin(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
+  direction.y = -glm::sin(glm::radians(camera.rotation.x * flipY));
+
+  spot_light.direction = direction;
+  _light_ubo_.update();
 
   _light_cube_.projection() = camera.matrices.perspective;
   _light_cube_.view() = camera.matrices.view;
@@ -423,7 +478,19 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
+    if (overlay->sliderFloat("Dir Light Intensity", &_light_ubo_.values().settings.dir_light_intensity, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+
+    if (overlay->sliderFloat("Point Light Intensity", &_light_ubo_.values().settings.point_light_intensity, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+
+    if (overlay->sliderFloat("Spot Light Intensity", &_light_ubo_.values().settings.spot_light_intensity, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+
+    /*if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
       _settings_ubo_.update();
     }
 
@@ -455,7 +522,7 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
         _light_cube_.color() = glm::vec3(_settings_ubo_.values().specularIntensity);
         _settings_ubo_.update();
       }
-    }
+    }*/
   }
 }
 
