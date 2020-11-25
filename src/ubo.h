@@ -11,8 +11,8 @@ template<typename T>
 class ubo {
  public:
   ubo() = default;
-  ubo(const T& other);
-  ubo(T&& other) noexcept;
+  explicit ubo(const T& other);
+  explicit ubo(T&& other) noexcept;
 
   void prepare(vks::VulkanDevice& vulkan_device, bool update_now = true);
   void destroy();
