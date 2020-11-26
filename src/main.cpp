@@ -8,7 +8,7 @@
 
 #include <fmt/format.h>
 
-constexpr bool ENABLE_VALIDATION = true;
+constexpr bool ENABLE_VALIDATION = false;
 
 vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDATION) {
   title = "Vulkan Scene Renderer";
@@ -25,7 +25,6 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
-//  _dir_light_ubo_.destroy();
   _light_ubo_.destroy();
   _settings_ubo_.destroy();
   shader_data.buffer.destroy();
@@ -202,8 +201,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   // One ubo to pass dynamic data to the shader, one for settings, one of dir light and one for point light
   // Two combined image samplers per material as each material uses color and normal maps
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 8),
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBufferDynamic, 8),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 6),
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
   };
   // One set for matrices and one per model image/texture
@@ -354,41 +352,10 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
   shader_data.buffer.map();
 
   _settings_ubo_.prepare(*vulkanDevice, false);
-  _update_point_light_values();
 
   _light_ubo_.prepare(*vulkanDevice, false);
-  _light_ubo_.values().settings = {
-      1.0f,
-      1.0f,
-      1.0f
-  };
-  _light_ubo_.values().dir_light = {
-      glm::vec4{-0.2f, -1.0f, -0.3f, 1.0f},
-      glm::vec4{0.05f, 0.05f, 0.05f, 1.0f},
-      glm::vec4{0.4f, 0.4f, 0.4f, 1.0f},
-      glm::vec4{0.5f, 0.5f, 0.5f, 1.0f}
-  };
-  _light_ubo_.values().point_light = {
-      shader_data.values.lightPos,
-      1.0f,
-      _settings_ubo_.values().pointLightLinear,
-      _settings_ubo_.values().pointLightQuad,
-      glm::vec4{glm::vec3{_settings_ubo_.values().minAmbientIntensity}, 1.0f},
-      glm::vec4{glm::vec3{_settings_ubo_.values().diffuseIntensity}, 1.0f},
-      glm::vec4{glm::vec3{_settings_ubo_.values().specularIntensity}, 1.0f}
-  };
-  _light_ubo_.values().spot_light = {
-      glm::vec4{camera.position, 1.0f},
-      camera.viewPos,
-      glm::cos(glm::radians(12.5f)),
-      glm::cos(glm::radians(17.5f)),
-      1.0f,
-      _settings_ubo_.values().pointLightLinear,
-      _settings_ubo_.values().pointLightQuad,
-      glm::vec4{0.0f},
-      glm::vec4{1.0f},
-      glm::vec4{1.0f}
-  };
+  _light_ubo_.update_distance(false);
+  _light_ubo_.update_spot_light_radius(false);
 
   update_uniform_buffers();
 }
@@ -418,7 +385,7 @@ void vulkan_scene_renderer::update_uniform_buffers() {
   _light_cube_.projection() = camera.matrices.perspective;
   _light_cube_.view() = camera.matrices.view;
   _light_cube_.model() = glm::mat4{1.0f};
-  _light_cube_.model() = glm::translate(_light_cube_.model(), glm::vec3{shader_data.values.lightPos});
+  _light_cube_.model() = glm::translate(_light_cube_.model(), glm::vec3{_light_ubo_.values().point_light.position});
   _light_cube_.model() = glm::scale(_light_cube_.model(), glm::vec3{0.2f});
 
   _light_cube_.update_uniform_buffers();
@@ -480,57 +447,56 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (overlay->sliderFloat("Dir Light Intensity", &_light_ubo_.values().settings.dir_light_intensity, 0.0f, 1.0f)) {
+    if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
+      _settings_ubo_.update();
+    }
+  }
+
+  if (overlay->header("Directional Light")) {
+    if (overlay->button("Reset Dir. Light")) {
+      _light_ubo_.reset_dir_light();
+    }
+
+    if (overlay->sliderFloat("Dir. Light Intensity", &_light_ubo_.values().settings.dir_light_intensity, 0.0f, 1.0f)) {
       _light_ubo_.update();
+    }
+  }
+
+  if (overlay->header("Point Light")) {
+    if (overlay->button("Reset Point Light")) {
+      _light_ubo_.reset_point_light();
     }
 
     if (overlay->sliderFloat("Point Light Intensity", &_light_ubo_.values().settings.point_light_intensity, 0.0f, 1.0f)) {
+      _light_cube_.color() = glm::vec3{_light_ubo_.values().settings.point_light_intensity};
       _light_ubo_.update();
+    }
+
+    if (overlay->sliderInt("Point Light Distance", &_light_ubo_.point_light_distance(), 5, 100)) {
+      _light_ubo_.update_distance();
+    }
+  }
+
+  if (overlay->header("Spot Light")) {
+    if (overlay->button("Reset Spot Light")) {
+      _light_ubo_.reset_spot_light();
     }
 
     if (overlay->sliderFloat("Spot Light Intensity", &_light_ubo_.values().settings.spot_light_intensity, 0.0f, 1.0f)) {
       _light_ubo_.update();
     }
 
-    /*if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
-      _settings_ubo_.update();
+    if (overlay->sliderInt("Spot Light Distance", &_light_ubo_.spot_light_distance(), 5, 100)) {
+      _light_ubo_.update_distance();
     }
 
-    if (overlay->sliderFloat("Min Ambient Intensity", &_settings_ubo_.values().minAmbientIntensity, 0.0f, 1.0f)) {
-      _settings_ubo_.update();
+    if (overlay->sliderFloat("Spot Light Inner Radius", &_light_ubo_.spot_light_inner_radius(), 0.0f, _light_ubo_.spot_light_outer_radius())) {
+      _light_ubo_.update_spot_light_radius();
     }
-
-    if (overlay->checkBox("Treat Cube as Point Light", &_settings_ubo_.values().treatAsPointLight)) {
-      _settings_ubo_.update();
+    if (overlay->sliderFloat("Spot Light Outer Radius", &_light_ubo_.spot_light_outer_radius(), _light_ubo_.spot_light_inner_radius(), 45.0f)) {
+      _light_ubo_.update_spot_light_radius();
     }
-
-    if (_settings_ubo_.values().treatAsPointLight) {
-      if (overlay->sliderFloat("Light Intensity", &_settings_ubo_.values().diffuseIntensity, 0.0f, 1.0f)) {
-        _settings_ubo_.values().specularIntensity = _settings_ubo_.values().diffuseIntensity;
-        _light_cube_.color() = glm::vec3(_settings_ubo_.values().specularIntensity);
-        _settings_ubo_.update();
-      }
-
-      if (overlay->sliderInt("Light Distance", &_point_light_distance_, 7, 250)) {
-        _update_point_light_values();
-        _settings_ubo_.update();
-      }
-    } else {
-      if (overlay->sliderFloat("Diffuse Intensity", &_settings_ubo_.values().diffuseIntensity, 0.0f, 1.0f)) {
-        _settings_ubo_.update();
-      }
-
-      if (overlay->sliderFloat("Specular Intensity", &_settings_ubo_.values().specularIntensity, 0.0f, 1.0f)) {
-        _light_cube_.color() = glm::vec3(_settings_ubo_.values().specularIntensity);
-        _settings_ubo_.update();
-      }
-    }*/
   }
-}
-
-void vulkan_scene_renderer::_update_point_light_values() {
-  _settings_ubo_.values().pointLightLinear = static_cast<float>(4.690508 * std::pow(_point_light_distance_, -1.009712));
-  _settings_ubo_.values().pointLightQuad = static_cast<float>(82.444779 * std::pow(_point_light_distance_, -2.019206));
 }
 
 int main(int argc, char** argv) {

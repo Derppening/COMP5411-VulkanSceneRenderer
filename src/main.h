@@ -2,7 +2,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-//#include "dir_light.h"
 #include "light_cube.h"
 #include "light_ubo.h"
 #include "query_pool.h"
@@ -19,7 +18,6 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     struct values {
       glm::mat4 projection;
       glm::mat4 view;
-      glm::vec4 lightPos = glm::vec4{0.0f, 2.5f, 0.0f, 1.0f};
       glm::vec4 viewPos;
     } values;
   } shader_data;
@@ -48,23 +46,10 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
 
  private:
-  struct _settings {
-    std::int32_t blinnPhong = 0;
-
-    float minAmbientIntensity = 0.1f;
-
-    std::int32_t treatAsPointLight = 0;
-    float diffuseIntensity = 1.0f;
-    float specularIntensity = 1.0f;
-    float pointLightLinear = 0.22f;
-    float pointLightQuad = 0.20f;
-
-    int useFlashlight = 0;
-    float flashlightCutoff = glm::cos(glm::radians(12.5f));
-    float flashlightOuterCutoff = glm::cos(glm::radians(17.5f));
+  // Alignment required since boolean is just a int32_t
+  struct alignas(4) _settings {
+    bool blinnPhong = false;
   };
-
-  void _update_point_light_values();
 
   ubo<_settings> _settings_ubo_;
   light_ubo _light_ubo_;
@@ -73,6 +58,4 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   query_pool _query_pool_;
   light_cube _light_cube_;
-
-  int _point_light_distance_ = 50;
 };
