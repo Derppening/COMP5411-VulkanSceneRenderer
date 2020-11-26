@@ -46,6 +46,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
 
  private:
+  glm::vec3 _calc_camera_direction();
+
   // Alignment required since boolean is just a int32_t
   struct alignas(4) _settings {
     bool blinnPhong = false;

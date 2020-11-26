@@ -368,18 +368,10 @@ void vulkan_scene_renderer::update_uniform_buffers() {
 
   _settings_ubo_.update();
 
-  float flipY = camera.flipY ? -1.0f : 1.0f;
   auto& spot_light = _light_ubo_.values().spot_light;
-  spot_light.position = glm::vec4{camera.position, 1.0f};
-  spot_light.position.x *= flipY;
-  spot_light.position.z *= flipY;
+  spot_light.position = camera.viewPos;
 
-  glm::vec4 direction = glm::vec4{0.0f};
-  direction.z = -glm::cos(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
-  direction.x = glm::sin(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
-  direction.y = -glm::sin(glm::radians(camera.rotation.x * flipY));
-
-  spot_light.direction = direction;
+  spot_light.direction = _calc_camera_direction();
   _light_ubo_.update();
 
   _light_cube_.projection() = camera.matrices.perspective;
@@ -426,6 +418,15 @@ void vulkan_scene_renderer::draw() {
 }
 
 void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
+  if (overlay->header("Camera")) {
+    std::string caption = fmt::format("Position: {:.3f}, {:.3f}, {:.3f}", camera.viewPos.x, camera.viewPos.y, camera.viewPos.z);
+    overlay->text(caption.c_str());
+
+    const auto dir = _calc_camera_direction();
+    caption = fmt::format("Direction: {:.3f}, {:.3f}, {:.3f}", dir.x, dir.y, dir.z);
+    overlay->text(caption.c_str());
+  }
+
   const auto& pipeline_stats = _query_pool_.query_results();
   if (!pipeline_stats.empty()) {
     if (overlay->header("Pipeline statistics")) {
@@ -460,6 +461,11 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
     if (overlay->sliderFloat("Dir. Light Intensity", &_light_ubo_.values().settings.dir_light_intensity, 0.0f, 1.0f)) {
       _light_ubo_.update();
     }
+
+    if (overlay->button("Set Dir. Light Dir.")) {
+      _light_ubo_.values().dir_light.direction = _calc_camera_direction();
+      _light_ubo_.update();
+    }
   }
 
   if (overlay->header("Point Light")) {
@@ -474,6 +480,11 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
 
     if (overlay->sliderInt("Point Light Distance", &_light_ubo_.point_light_distance(), 5, 100)) {
       _light_ubo_.update_distance();
+    }
+
+    if (overlay->button("Set Point Light Pos.")) {
+      _light_ubo_.values().point_light.position = camera.viewPos;
+      update_uniform_buffers();
     }
   }
 
@@ -497,6 +508,17 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       _light_ubo_.update_spot_light_radius();
     }
   }
+}
+
+glm::vec3 vulkan_scene_renderer::_calc_camera_direction() {
+  const auto flipY = camera.flipY ? -1.0f : 1.0f;
+
+  glm::vec3 direction{0.0f};
+  direction.z = -glm::cos(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
+  direction.x = glm::sin(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
+  direction.y = -glm::sin(glm::radians(camera.rotation.x * flipY));
+
+  return direction;
 }
 
 int main(int argc, char** argv) {
