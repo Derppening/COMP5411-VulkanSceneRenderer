@@ -401,11 +401,13 @@ void vulkan_scene_renderer::update_uniform_buffers() {
 
   _settings_ubo_.update();
 
+  float flipY = camera.flipY ? -1.0f : 1.0f;
   auto& spot_light = _light_ubo_.values().spot_light;
   spot_light.position = glm::vec4{camera.position, 1.0f};
+  spot_light.position.x *= flipY;
+  spot_light.position.z *= flipY;
 
   glm::vec4 direction = glm::vec4{0.0f};
-  float flipY = camera.flipY ? -1.0f : 1.0f;
   direction.z = -glm::cos(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
   direction.x = glm::sin(glm::radians(camera.rotation.y)) * glm::cos(glm::radians(camera.rotation.x * flipY));
   direction.y = -glm::sin(glm::radians(camera.rotation.x * flipY));
