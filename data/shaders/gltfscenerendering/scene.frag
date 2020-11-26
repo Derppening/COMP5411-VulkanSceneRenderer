@@ -13,9 +13,9 @@ layout(set = 3, binding = 0) uniform LightSettings {
 layout(set = 3, binding = 1) uniform DirLight {
 	vec3 direction;
 
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
+	float ambient;
+	float diffuse;
+	float specular;
 } dirLight;
 layout(set = 3, binding = 2) uniform PointLight {
 	vec3 position;
@@ -24,9 +24,9 @@ layout(set = 3, binding = 2) uniform PointLight {
 	float linear;
 	float quadratic;
 
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
+	float ambient;
+	float diffuse;
+	float specular;
 } pointLight;
 layout(set = 3, binding = 3) uniform SpotLight {
 	vec3 position;
@@ -38,9 +38,9 @@ layout(set = 3, binding = 3) uniform SpotLight {
 	float linear;
 	float quadratic;
 
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
+	float ambient;
+	float diffuse;
+	float specular;
 } spotLight;
 
 layout (location = 0) in vec3 inNormal;

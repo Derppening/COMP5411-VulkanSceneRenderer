@@ -2,9 +2,9 @@
 
 const light_ubo::dir_light light_ubo::default_dir_light = {
     glm::vec3{-0.2f, -1.0f, -0.3f},
-    glm::vec3{0.05f, 0.05f, 0.05f},
-    glm::vec3{0.4f, 0.4f, 0.4f},
-    glm::vec3{0.5f, 0.5f, 0.5f}
+    0.05f,
+    0.4f,
+    0.5f
 };
 
 const light_ubo::point_light light_ubo::default_point_light = {
@@ -12,9 +12,9 @@ const light_ubo::point_light light_ubo::default_point_light = {
     1.0f,
     light_ubo::_calc_linear_term(light_ubo::_default_point_light_distance),
     light_ubo::_calc_quad_term(light_ubo::_default_point_light_distance),
-    glm::vec3{0.1f},
-    glm::vec3{1.0f},
-    glm::vec3{1.0f},
+    0.1f,
+    1.0f,
+    1.0f
 };
 
 const light_ubo::spot_light light_ubo::default_spot_light = {
@@ -25,9 +25,9 @@ const light_ubo::spot_light light_ubo::default_spot_light = {
     1.0f,
     light_ubo::_calc_linear_term(light_ubo::_default_spot_light_distance),
     light_ubo::_calc_quad_term(light_ubo::_default_spot_light_distance),
-    glm::vec3{0.0f},
-    glm::vec3{1.0f},
-    glm::vec3{1.0f}
+    0.0f,
+    1.0f,
+    1.0f
 };
 
 void light_ubo::prepare(vks::VulkanDevice& vulkan_device, bool update_now) {

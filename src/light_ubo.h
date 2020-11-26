@@ -19,9 +19,9 @@ class light_ubo {
   struct dir_light {
     alignas(16) glm::vec3 direction;
 
-    alignas(16) glm::vec3 ambient;
-    alignas(16) glm::vec3 diffuse;
-    alignas(16) glm::vec3 specular;
+    float ambient;
+    float diffuse;
+    float specular;
   };
 
   struct point_light {
@@ -31,9 +31,9 @@ class light_ubo {
     float linear;
     float quadratic;
 
-    alignas(16) glm::vec3 ambient;
-    alignas(16) glm::vec3 diffuse;
-    alignas(16) glm::vec3 specular;
+    float ambient;
+    float diffuse;
+    float specular;
   };
 
   struct spot_light {
@@ -46,9 +46,9 @@ class light_ubo {
     float linear;
     float quadratic;
 
-    alignas(16) glm::vec3 ambient;
-    alignas(16) glm::vec3 diffuse;
-    alignas(16) glm::vec3 specular;
+    float ambient;
+    float diffuse;
+    float specular;
   };
 
   struct values {

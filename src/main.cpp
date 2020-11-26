@@ -462,6 +462,17 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       _light_ubo_.update();
     }
 
+    auto& light = _light_ubo_.values().dir_light;
+    if (overlay->sliderFloat("Dir. Light Ambient", &light.ambient, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Dir. Light Diffuse", &light.diffuse, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Dir. Light Specular", &light.specular, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+
     if (overlay->button("Set Dir. Light Dir.")) {
       _light_ubo_.values().dir_light.direction = _calc_camera_direction();
       _light_ubo_.update();
@@ -482,6 +493,17 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       _light_ubo_.update_distance();
     }
 
+    auto& light = _light_ubo_.values().point_light;
+    if (overlay->sliderFloat("Point Light Ambient", &light.ambient, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Point Light Diffuse", &light.diffuse, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Point Light Specular", &light.specular, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+
     if (overlay->button("Set Point Light Pos.")) {
       _light_ubo_.values().point_light.position = camera.viewPos;
       update_uniform_buffers();
@@ -499,6 +521,17 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
 
     if (overlay->sliderInt("Spot Light Distance", &_light_ubo_.spot_light_distance(), 5, 100)) {
       _light_ubo_.update_distance();
+    }
+
+    auto& light = _light_ubo_.values().spot_light;
+    if (overlay->sliderFloat("Spot Light Ambient", &light.ambient, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Spot Light Diffuse", &light.diffuse, 0.0f, 1.0f)) {
+      _light_ubo_.update();
+    }
+    if (overlay->sliderFloat("Spot Light Specular", &light.specular, 0.0f, 1.0f)) {
+      _light_ubo_.update();
     }
 
     if (overlay->sliderFloat("Spot Light Inner Radius", &_light_ubo_.spot_light_inner_radius(), 0.0f, _light_ubo_.spot_light_outer_radius())) {
