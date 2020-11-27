@@ -86,4 +86,10 @@ class vulkan_scene_renderer : public VulkanExampleBase {
       vk::UniqueDeviceMemory _memory;
     } _depth;
   } _multisample_target_;
+
+  struct {
+    float _length = 0.0f;
+
+    vk::UniquePipeline _pipeline;
+  } _gs_;
 };

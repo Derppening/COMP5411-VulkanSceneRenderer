@@ -42,6 +42,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
 void vulkan_scene_renderer::getEnabledFeatures() {
   enabledFeatures.sampleRateShading = deviceFeatures.sampleRateShading;
   enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
+  enabledFeatures.geometryShader = deviceFeatures.geometryShader;
 
   if (query_pool::is_supported(deviceFeatures)) {
     enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
@@ -83,6 +84,8 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     drawCmdBuffers[i]->setViewport(0, {viewport});
     drawCmdBuffers[i]->setScissor(0, {scissor});
 
+    drawCmdBuffers[i]->setLineWidth(1.0f);
+
     _query_pool_.begin(*drawCmdBuffers[i]);
 
     // Bind scene matrices descriptor to set 0
@@ -94,6 +97,10 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     // POI: Draw the glTF scene
     if (_draw_scene_) {
       gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+
+    }
+    if (enabledFeatures.geometryShader && _gs_._length > 0.0f) {
+      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout, *_gs_._pipeline);
     }
 
     if (_draw_light_) {
@@ -344,7 +351,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Descriptor set layout for passing matrices
   std::vector<vk::DescriptorSetLayoutBinding> set_layout_bindings = {
-      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex, 0),
+      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, 0),
   };
   vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
 
@@ -375,7 +382,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
-  vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex, sizeof(glm::mat4), 0);
+  vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, sizeof(glm::mat4), 0);
   // Push constant ranges are part of the pipeline layout
   pipelineLayoutCI.pushConstantRangeCount = 1;
   pipelineLayoutCI.pPushConstantRanges = &pushConstantRange;
@@ -425,9 +432,13 @@ void vulkan_scene_renderer::prepare_pipelines() {
     multisampleStateCI.minSampleShading = 0.25f;
   }
 
-  const std::vector<vk::DynamicState> dynamicStateEnables = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+  const std::vector<vk::DynamicState> dynamicStateEnables = {
+      vk::DynamicState::eViewport,
+      vk::DynamicState::eScissor,
+      vk::DynamicState::eLineWidth
+  };
   vk::PipelineDynamicStateCreateInfo dynamicStateCI = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables.data(), static_cast<uint32_t>(dynamicStateEnables.size()), {});
-  std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
+  std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
   const std::vector<vk::VertexInputBindingDescription> vertexInputBindings = {
       vks::initializers::vertexInputBindingDescription(0, sizeof(vulkan_gltf_scene::vertex), vk::VertexInputRate::eVertex),
@@ -450,9 +461,29 @@ void vulkan_scene_renderer::prepare_pipelines() {
   pipelineCI.pViewportState = &viewportStateCI;
   pipelineCI.pDepthStencilState = &depthStencilStateCI;
   pipelineCI.pDynamicState = &dynamicStateCI;
+
+  if (enabledFeatures.geometryShader) {
+    shaderStages.resize(3);
+    pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+    pipelineCI.pStages = shaderStages.data();
+
+
+    shaderStages[0] = loadShader(getShadersPath() + "normals/normals.vert.spv", vk::ShaderStageFlagBits::eVertex);
+    shaderStages[1] = loadShader(getShadersPath() + "normals/normals.frag.spv", vk::ShaderStageFlagBits::eFragment);
+    shaderStages[2] = loadShader(getShadersPath() + "normals/normals.geom.spv", vk::ShaderStageFlagBits::eGeometry);
+
+    std::vector<vk::SpecializationMapEntry> specialization_map_entries = {
+        vks::initializers::specializationMapEntry(0, 0, sizeof(_gs_._length))
+    };
+    auto specialization_info = vks::initializers::specializationInfo(specialization_map_entries, sizeof(_gs_._length), &_gs_._length);
+    shaderStages[2].pSpecializationInfo = &specialization_info;
+
+    _gs_._pipeline = device.createGraphicsPipelineUnique(*pipelineCache, {pipelineCI}).value;
+  }
+
+  shaderStages.resize(2);
   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
   pipelineCI.pStages = shaderStages.data();
-
   shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
   shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
 
@@ -581,6 +612,15 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   if (overlay->header("Settings")) {
     if (overlay->checkBox("Draw Scene", &_draw_scene_)) {
       buildCommandBuffers();
+    }
+
+    if (enabledFeatures.geometryShader) {
+      if (overlay->inputFloat("Scene Normals Length", &_gs_._length, 1.0f, 0)) {
+        _gs_._length = std::max(_gs_._length, 0.0f);
+
+        prepare_pipelines();
+        buildCommandBuffers();
+      }
     }
 
     if (deviceFeatures.fillModeNonSolid) {
