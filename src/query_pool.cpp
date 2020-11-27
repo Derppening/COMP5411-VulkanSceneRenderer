@@ -18,6 +18,12 @@ void query_pool::setup(vk::Device device, vk::PhysicalDeviceFeatures enabled_fea
       "Clipping stage primitives output    ",
       "Fragment shader invocations        "
   };
+  if (_enabled_features_.geometryShader) {
+    _pipeline_stat_names_.insert(_pipeline_stat_names_.begin() + 3, {
+        "Geometry shader invocations",
+        "Geometry shader primitives count"
+    });
+  }
 
   vk::QueryPoolCreateInfo query_pool_info = {};
   query_pool_info.queryType = vk::QueryType::ePipelineStatistics;
@@ -28,7 +34,12 @@ void query_pool::setup(vk::Device device, vk::PhysicalDeviceFeatures enabled_fea
           vk::QueryPipelineStatisticFlagBits::eClippingInvocations |
           vk::QueryPipelineStatisticFlagBits::eClippingPrimitives |
           vk::QueryPipelineStatisticFlagBits::eFragmentShaderInvocations;
-  query_pool_info.queryCount = 6;
+  if (_enabled_features_.geometryShader) {
+    query_pool_info.pipelineStatistics = query_pool_info.pipelineStatistics |
+        vk::QueryPipelineStatisticFlagBits::eGeometryShaderInvocations |
+        vk::QueryPipelineStatisticFlagBits::eGeometryShaderPrimitives;
+  }
+  query_pool_info.queryCount = static_cast<std::uint32_t>(_pipeline_stat_names_.size());
   _query_pool_ = device.createQueryPoolUnique(query_pool_info);
 }
 
