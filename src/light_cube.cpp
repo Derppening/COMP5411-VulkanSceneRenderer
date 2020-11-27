@@ -104,7 +104,7 @@ void light_cube::prepare_pipeline() {
       false,
       vk::CompareOp::eLessOrEqual);
   auto viewport_state = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
-  auto multisample_state = vks::initializers::pipelineMultisampleStateCreateInfo(vk::SampleCountFlagBits::e1, {});
+  auto multisample_state = vks::initializers::pipelineMultisampleStateCreateInfo(_sample_count_, {});
   std::vector<vk::DynamicState> dynamic_state_enables = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   auto dynamic_state = vks::initializers::pipelineDynamicStateCreateInfo(dynamic_state_enables);
   std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stages;

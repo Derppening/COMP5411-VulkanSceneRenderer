@@ -34,6 +34,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   ~vulkan_scene_renderer() override;
   void getEnabledFeatures() override;
   void buildCommandBuffers() override;
+  void setupRenderPass() override;
+  void setupFrameBuffer() override;
   void load_gltf_file(std::string filename);
   void load_assets();
   void setup_descriptors();
@@ -46,7 +48,10 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
 
  private:
+  vk::SampleCountFlagBits _get_max_usable_sample_count();
+  void _setup_multisample_target();
   glm::vec3 _calc_camera_direction();
+  void _update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now = true);
 
   // Alignment required since boolean is just a int32_t
   struct alignas(4) _settings {
@@ -56,8 +61,29 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   ubo<_settings> _settings_ubo_;
   light_ubo _light_ubo_;
 
+  bool _draw_light_ = false;
+  bool _draw_scene_ = true;
+
   bool _wireframe_ = false;
 
   query_pool _query_pool_;
   light_cube _light_cube_;
+
+  bool _use_sample_shading_ = false;
+  std::vector<vk::SampleCountFlagBits> _supported_sample_counts_;
+  vk::SampleCountFlagBits _sample_count_ = vk::SampleCountFlagBits::e1;
+  int _sample_count_option_ = 0;
+
+  struct {
+    struct {
+      vk::UniqueImage _image;
+      vk::UniqueImageView _view;
+      vk::UniqueDeviceMemory _memory;
+    } _color;
+    struct {
+      vk::UniqueImage _image;
+      vk::UniqueImageView _view;
+      vk::UniqueDeviceMemory _memory;
+    } _depth;
+  } _multisample_target_;
 };

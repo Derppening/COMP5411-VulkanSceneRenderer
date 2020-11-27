@@ -25,6 +25,14 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
+
+  _multisample_target_._color._image.reset();
+  _multisample_target_._color._view.reset();
+  _multisample_target_._color._memory.reset();
+  _multisample_target_._depth._image.reset();
+  _multisample_target_._depth._view.reset();
+  _multisample_target_._depth._memory.reset();
+
   _light_ubo_.destroy();
   _settings_ubo_.destroy();
   shader_data.buffer.destroy();
@@ -32,6 +40,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
 }
 
 void vulkan_scene_renderer::getEnabledFeatures() {
+  enabledFeatures.sampleRateShading = deviceFeatures.sampleRateShading;
   enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
 
   if (query_pool::is_supported(deviceFeatures)) {
@@ -45,10 +54,12 @@ void vulkan_scene_renderer::getEnabledFeatures() {
 void vulkan_scene_renderer::buildCommandBuffers() {
   vk::CommandBufferBeginInfo cmd_buf_info = vks::initializers::commandBufferBeginInfo();
 
-  std::array<vk::ClearValue, 2> clear_values;
-  clear_values[0].color = defaultClearColor;
-  clear_values[0].color = {std::array{0.25f, 0.25f, 0.25f, 1.0f }};
-  clear_values[1].depthStencil = vk::ClearDepthStencilValue{1.0f, 0};
+  std::vector<vk::ClearValue> clear_values;
+  clear_values.emplace_back(std::array{0.25f, 0.25f, 0.25f, 1.0f });
+  if (_sample_count_ != vk::SampleCountFlagBits::e1) {
+    clear_values.emplace_back(std::array{0.25f, 0.25f, 0.25f, 1.0f});
+  }
+  clear_values.emplace_back(vk::ClearDepthStencilValue{1.0f, 0});
 
   vk::RenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
   renderPassBeginInfo.renderPass = *renderPass;
@@ -81,15 +92,137 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 3, {_light_ubo_.descriptor_set()}, {});
 
     // POI: Draw the glTF scene
-    gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+    if (_draw_scene_) {
+      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+    }
 
-    _light_cube_.draw(*drawCmdBuffers[i]);
+    if (_draw_light_) {
+      _light_cube_.draw(*drawCmdBuffers[i]);
+    }
 
     _query_pool_.end(*drawCmdBuffers[i]);
 
     drawUI(*drawCmdBuffers[i]);
     drawCmdBuffers[i]->endRenderPass();
     drawCmdBuffers[i]->end();
+  }
+}
+
+void vulkan_scene_renderer::setupRenderPass() {
+  if (_sample_count_ == vk::SampleCountFlagBits::e1) {
+    VulkanExampleBase::setupRenderPass();
+  } else {
+    std::array<vk::AttachmentDescription, 3> attachments = {};
+
+    // Multisampled attachment that we render to
+    attachments[0].format = swapChain.colorFormat;
+    attachments[0].samples = _sample_count_;
+    attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+    attachments[0].storeOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+    attachments[0].finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
+
+    // Framebuffer attachment where multisampled image will be resolved and presented to the swapchain
+    attachments[1].format = swapChain.colorFormat;
+    attachments[1].samples = vk::SampleCountFlagBits::e1;
+    attachments[1].loadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[1].storeOp = vk::AttachmentStoreOp::eStore;
+    attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[1].initialLayout = vk::ImageLayout::eUndefined;
+    attachments[1].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+    // Multisampled depth attachment
+    attachments[2].format = depthFormat;
+    attachments[2].samples = _sample_count_;
+    attachments[2].loadOp = vk::AttachmentLoadOp::eClear;
+    attachments[2].storeOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[2].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[2].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[2].initialLayout = vk::ImageLayout::eUndefined;
+    attachments[2].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+    vk::AttachmentReference color_reference = {};
+    color_reference.attachment = 0;
+    color_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+    vk::AttachmentReference depth_reference = {};
+    depth_reference.attachment = 2;
+    depth_reference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+    // Resolve attachment reference for the color attachment
+    vk::AttachmentReference resolve_reference = {};
+    resolve_reference.attachment = 1;
+    resolve_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+    vk::SubpassDescription subpass = {};
+    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_reference;
+    // Pass our resolve attachments to the subpass
+    subpass.pResolveAttachments = &resolve_reference;
+    subpass.pDepthStencilAttachment = &depth_reference;
+
+    std::array<vk::SubpassDependency, 2> dependencies = {};
+
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    dependencies[0].srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+    dependencies[0].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependencies[0].srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+    dependencies[0].dstAccessMask =
+        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+    dependencies[1].srcAccessMask =
+        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+    dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+    vk::RenderPassCreateInfo render_pass_info = vks::initializers::renderPassCreateInfo();
+    render_pass_info.attachmentCount = attachments.size();
+    render_pass_info.pAttachments = attachments.data();
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+    render_pass_info.dependencyCount = 2;
+    render_pass_info.pDependencies = dependencies.data();
+
+    renderPass = device.createRenderPassUnique(render_pass_info);
+  }
+}
+
+void vulkan_scene_renderer::setupFrameBuffer() {
+  if (_sample_count_ == vk::SampleCountFlagBits::e1) {
+    VulkanExampleBase::setupFrameBuffer();
+  } else {
+    std::array<vk::ImageView, 3> attachments = {};
+
+    _setup_multisample_target();
+
+    attachments[0] = *_multisample_target_._color._view;
+    attachments[2] = *_multisample_target_._depth._view;
+
+    vk::FramebufferCreateInfo framebuffer_create_info = {};
+    framebuffer_create_info.pNext = nullptr;
+    framebuffer_create_info.renderPass = *renderPass;
+    framebuffer_create_info.attachmentCount = attachments.size();
+    framebuffer_create_info.pAttachments = attachments.data();
+    framebuffer_create_info.width = width;
+    framebuffer_create_info.height = height;
+    framebuffer_create_info.layers = 1;
+
+    // Create frame buffers for every swap chain image
+    frameBuffers.resize(swapChain.imageCount);
+    for (std::uint32_t i = 0; i < frameBuffers.size(); ++i) {
+      attachments[1] = *swapChain.buffers[i].view;
+      frameBuffers[i] = device.createFramebufferUnique(framebuffer_create_info);
+    }
   }
 }
 
@@ -285,7 +418,13 @@ void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineColorBlendStateCreateInfo colorBlendStateCI = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachmentStateCI);
   vk::PipelineDepthStencilStateCreateInfo depthStencilStateCI = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, vk::CompareOp::eLessOrEqual);
   vk::PipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
-  vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(vk::SampleCountFlagBits::e1, {});
+
+  vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_sample_count_, {});
+  if (vulkanDevice->enabledFeatures.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
+    multisampleStateCI.sampleShadingEnable = true;
+    multisampleStateCI.minSampleShading = 0.25f;
+  }
+
   const std::vector<vk::DynamicState> dynamicStateEnables = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
   vk::PipelineDynamicStateCreateInfo dynamicStateCI = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables.data(), static_cast<uint32_t>(dynamicStateEnables.size()), {});
   std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages;
@@ -384,6 +523,8 @@ void vulkan_scene_renderer::update_uniform_buffers() {
 }
 
 void vulkan_scene_renderer::prepare() {
+  _get_max_usable_sample_count();
+  _update_sample_count(_sample_count_, false);
   VulkanExampleBase::prepare();
   load_assets();
   _query_pool_.setup(device, enabledFeatures);
@@ -438,6 +579,10 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   }
 
   if (overlay->header("Settings")) {
+    if (overlay->checkBox("Draw Scene", &_draw_scene_)) {
+      buildCommandBuffers();
+    }
+
     if (deviceFeatures.fillModeNonSolid) {
       if (overlay->checkBox("Wireframe", &_wireframe_)) {
         _light_cube_.wireframe() = _wireframe_;
@@ -450,6 +595,23 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
 
     if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
       _settings_ubo_.update();
+    }
+
+    std::vector<std::string> sample_count_labels;
+    sample_count_labels.reserve(_supported_sample_counts_.size());
+    for (const auto& sc : _supported_sample_counts_) {
+      sample_count_labels.emplace_back(vk::to_string(sc));
+    }
+    if (overlay->comboBox("Multisampling", &_sample_count_option_, sample_count_labels)) {
+      _update_sample_count(vk::SampleCountFlagBits{1U << static_cast<std::uint32_t>(_sample_count_option_)});
+    }
+    if (enabledFeatures.sampleRateShading) {
+      if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
+        prepare_pipelines();
+        buildCommandBuffers();
+      }
+    } else {
+      overlay->text("Sample-Rate Shading not supported.");
     }
   }
 
@@ -480,6 +642,10 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   }
 
   if (overlay->header("Point Light")) {
+    if (overlay->checkBox("Draw Point Light", &_draw_light_)) {
+      buildCommandBuffers();
+    }
+
     if (overlay->button("Reset Point Light")) {
       _light_ubo_.reset_point_light();
     }
@@ -543,6 +709,114 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   }
 }
 
+vk::SampleCountFlagBits vulkan_scene_renderer::_get_max_usable_sample_count() {
+  auto counts = std::min(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
+
+  if (_supported_sample_counts_.empty()) {
+    _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e1);
+    if (counts & vk::SampleCountFlagBits::e2) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e2); }
+    if (counts & vk::SampleCountFlagBits::e4) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e4); }
+    if (counts & vk::SampleCountFlagBits::e8) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e8); }
+    if (counts & vk::SampleCountFlagBits::e16) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e16); }
+    if (counts & vk::SampleCountFlagBits::e32) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e32); }
+    if (counts & vk::SampleCountFlagBits::e64) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e64); }
+  }
+  return *std::max_element(_supported_sample_counts_.begin(), _supported_sample_counts_.end());
+}
+
+void vulkan_scene_renderer::_setup_multisample_target() {
+  assert((deviceProperties.limits.framebufferColorSampleCounts >= _sample_count_) && (deviceProperties.limits.framebufferDepthSampleCounts >= _sample_count_));
+
+  // Color target
+  auto info = vks::initializers::imageCreateInfo();
+  info.imageType = vk::ImageType::e2D;
+  info.format = swapChain.colorFormat;
+  info.extent.width = width;
+  info.extent.height = height;
+  info.extent.depth = 1;
+  info.mipLevels = 1;
+  info.arrayLayers = 1;
+  info.sharingMode = vk::SharingMode::eExclusive;
+  info.tiling = vk::ImageTiling::eOptimal;
+  info.samples = _sample_count_;
+  // Image will only be used as a transient target
+  info.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment;
+  info.initialLayout = vk::ImageLayout::eUndefined;
+
+  _multisample_target_._color._image = device.createImageUnique(info);
+
+  vk::MemoryRequirements mem_reqs = device.getImageMemoryRequirements(*_multisample_target_._color._image);
+  auto mem_alloc = vks::initializers::memoryAllocateInfo();
+  mem_alloc.allocationSize = mem_reqs.size;
+  // We prefer a lazily allocated memory type
+  // This means that the memory gets allocated when the implementation sees fit, e.g. when first using the images
+  vk::Bool32 lazy_mem_type_present;
+  mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
+  if (!lazy_mem_type_present) {
+    // If this is not available, fall back to device local memory
+    mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+  }
+  _multisample_target_._color._memory = device.allocateMemoryUnique(mem_alloc);
+  device.bindImageMemory(*_multisample_target_._color._image, *_multisample_target_._color._memory, 0);
+
+  // Create image view for the MSAA target
+  auto view_info = vks::initializers::imageViewCreateInfo();
+  view_info.image = *_multisample_target_._color._image;
+  view_info.viewType = vk::ImageViewType::e2D;
+  view_info.format = swapChain.colorFormat;
+  view_info.components.r = vk::ComponentSwizzle::eR;
+  view_info.components.g = vk::ComponentSwizzle::eG;
+  view_info.components.b = vk::ComponentSwizzle::eB;
+  view_info.components.a = vk::ComponentSwizzle::eA;
+  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+  view_info.subresourceRange.levelCount = 1;
+  view_info.subresourceRange.layerCount = 1;
+
+  _multisample_target_._color._view = device.createImageViewUnique(view_info);
+
+  // Depth target
+  info.imageType = vk::ImageType::e2D;
+  info.format = depthFormat;
+  info.extent.width = width;
+  info.extent.height = height;
+  info.extent.depth = 1;
+  info.mipLevels = 1;
+  info.arrayLayers = 1;
+  info.sharingMode = vk::SharingMode::eExclusive;
+  info.tiling = vk::ImageTiling::eOptimal;
+  info.samples = _sample_count_;
+  // Image will only be used as a transient target
+  info.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
+  info.initialLayout = vk::ImageLayout::eUndefined;
+
+  _multisample_target_._depth._image = device.createImageUnique(info);
+
+  mem_reqs = device.getImageMemoryRequirements(*_multisample_target_._depth._image);
+  mem_alloc = vks::initializers::memoryAllocateInfo();
+  mem_alloc.allocationSize = mem_reqs.size;
+  mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
+  if (!lazy_mem_type_present) {
+    mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+  }
+
+  _multisample_target_._depth._memory = device.allocateMemoryUnique(mem_alloc);
+  device.bindImageMemory(*_multisample_target_._depth._image, *_multisample_target_._depth._memory, 0);
+
+  // Create image view for the MSAA target
+  view_info.image = *_multisample_target_._depth._image;
+  view_info.viewType = vk::ImageViewType::e2D;
+  view_info.format = depthFormat;
+  view_info.components.r = vk::ComponentSwizzle::eR;
+  view_info.components.g = vk::ComponentSwizzle::eG;
+  view_info.components.b = vk::ComponentSwizzle::eB;
+  view_info.components.a = vk::ComponentSwizzle::eA;
+  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+  view_info.subresourceRange.levelCount = 1;
+  view_info.subresourceRange.layerCount = 1;
+
+  _multisample_target_._depth._view = device.createImageViewUnique(view_info);
+}
+
 glm::vec3 vulkan_scene_renderer::_calc_camera_direction() {
   const auto flipY = camera.flipY ? -1.0f : 1.0f;
 
@@ -552,6 +826,22 @@ glm::vec3 vulkan_scene_renderer::_calc_camera_direction() {
   direction.y = -glm::sin(glm::radians(camera.rotation.x * flipY));
 
   return direction;
+}
+
+void vulkan_scene_renderer::_update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now) {
+  _sample_count_ = sample_count;
+  UIOverlay.rasterizationSamples = sample_count;
+  _light_cube_.sample_count() = sample_count;
+
+  if (update_now) {
+    setupRenderPass();
+    setupFrameBuffer();
+    prepare_pipelines();
+    UIOverlay.preparePipeline(*pipelineCache, *renderPass);
+    _light_cube_.prepare_pipeline();
+
+    buildCommandBuffers();
+  }
 }
 
 int main(int argc, char** argv) {

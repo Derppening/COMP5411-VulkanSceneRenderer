@@ -15,6 +15,7 @@ class light_cube {
   void setup(VulkanExampleBase& app);
   void destroy();
 
+  vk::SampleCountFlagBits& sample_count() noexcept { return _sample_count_; }
   bool& wireframe() { return _wireframe_; }
   glm::mat4& projection() { return _ubo_.values().projection; }
   glm::mat4& model() { return _ubo_.values().model; }
@@ -82,6 +83,7 @@ class light_cube {
  };
 
   bool _wireframe_ = false;
+  vk::SampleCountFlagBits _sample_count_;
   VulkanExampleBase* _app_ = nullptr;
 
   void _setup_descriptor_set_layout();
