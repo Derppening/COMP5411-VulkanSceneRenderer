@@ -24,6 +24,12 @@ void query_pool::setup(vk::Device device, vk::PhysicalDeviceFeatures enabled_fea
         "Geometry shader primitives count"
     });
   }
+  if (_enabled_features_.tessellationShader) {
+    _pipeline_stat_names_.insert(_pipeline_stat_names_.end(), {
+      "Tessellation control shader patches",
+      "Tessellation eval. shader invocations"
+    });
+  }
 
   vk::QueryPoolCreateInfo query_pool_info = {};
   query_pool_info.queryType = vk::QueryType::ePipelineStatistics;
@@ -38,6 +44,11 @@ void query_pool::setup(vk::Device device, vk::PhysicalDeviceFeatures enabled_fea
     query_pool_info.pipelineStatistics = query_pool_info.pipelineStatistics |
         vk::QueryPipelineStatisticFlagBits::eGeometryShaderInvocations |
         vk::QueryPipelineStatisticFlagBits::eGeometryShaderPrimitives;
+  }
+  if (_enabled_features_.tessellationShader) {
+    query_pool_info.pipelineStatistics = query_pool_info.pipelineStatistics |
+        vk::QueryPipelineStatisticFlagBits::eTessellationControlShaderPatches |
+        vk::QueryPipelineStatisticFlagBits::eTessellationEvaluationShaderInvocations;
   }
   query_pool_info.queryCount = static_cast<std::uint32_t>(_pipeline_stat_names_.size());
   _query_pool_ = device.createQueryPoolUnique(query_pool_info);

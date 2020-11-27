@@ -492,22 +492,54 @@ void vulkan_scene_renderer::prepare_pipelines() {
     _gs_._pipeline = device.createGraphicsPipelineUnique(*pipelineCache, {pipelineCI}).value;
   }
 
-  if (enabledFeatures.tessellationShader) {
+  shaderStages.resize(2);
+  pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+  pipelineCI.pStages = shaderStages.data();
+  shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
+  shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
+
+  if (enabledFeatures.tessellationShader && _ts_._mode > 0) {
     inputAssemblyStateCI.topology = vk::PrimitiveTopology::ePatchList;
 
     shaderStages.resize(4);
     pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
     pipelineCI.pStages = shaderStages.data();
-  } else {
-    shaderStages.resize(2);
-    pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-    pipelineCI.pStages = shaderStages.data();
-  }
-  shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
-  shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
-  if (enabledFeatures.tessellationShader) {
-    shaderStages[2] = loadShader(getShadersPath() + "pntriangles/pntriangles.tesc.spv", vk::ShaderStageFlagBits::eTessellationControl);
-    shaderStages[3] = loadShader(getShadersPath() + "pntriangles/pntriangles.tese.spv", vk::ShaderStageFlagBits::eTessellationEvaluation);
+
+    if (_ts_._mode == 1) {
+      if (_ts_._passthrough_module_tesc && _ts_._passthrough_module_tese) {
+        shaderStages[2].stage = vk::ShaderStageFlagBits::eTessellationControl;
+        shaderStages[2].module = _ts_._passthrough_module_tesc;
+        shaderStages[2].pName = "main";
+        shaderStages[3].stage = vk::ShaderStageFlagBits::eTessellationEvaluation;
+        shaderStages[3].module = _ts_._passthrough_module_tese;
+        shaderStages[3].pName = "main";
+      } else {
+        shaderStages[2] = loadShader(getShadersPath() + "pntriangles/passthrough.tesc.spv",
+                                     vk::ShaderStageFlagBits::eTessellationControl);
+        shaderStages[3] = loadShader(getShadersPath() + "pntriangles/passthrough.tese.spv",
+                                     vk::ShaderStageFlagBits::eTessellationEvaluation);
+
+        _ts_._passthrough_module_tesc = shaderStages[2].module;
+        _ts_._passthrough_module_tese = shaderStages[3].module;
+      }
+    } else {
+      if (_ts_._pn_module_tesc && _ts_._pn_module_tese) {
+        shaderStages[2].stage = vk::ShaderStageFlagBits::eTessellationControl;
+        shaderStages[2].module = _ts_._pn_module_tesc;
+        shaderStages[2].pName = "main";
+        shaderStages[3].stage = vk::ShaderStageFlagBits::eTessellationEvaluation;
+        shaderStages[3].module = _ts_._pn_module_tese;
+        shaderStages[3].pName = "main";
+      } else {
+        shaderStages[2] = loadShader(getShadersPath() + "pntriangles/pntriangles.tesc.spv",
+                                     vk::ShaderStageFlagBits::eTessellationControl);
+        shaderStages[3] = loadShader(getShadersPath() + "pntriangles/pntriangles.tese.spv",
+                                     vk::ShaderStageFlagBits::eTessellationEvaluation);
+
+        _ts_._pn_module_tesc = shaderStages[2].module;
+        _ts_._pn_module_tese = shaderStages[3].module;
+      }
+    }
   }
 
   // POI: Instead if using a few fixed pipelines, we create one pipeline for each material using the properties of that material
@@ -523,9 +555,9 @@ void vulkan_scene_renderer::prepare_pipelines() {
 
     materialSpecializationData.alphaMask = material.alpha_mode == "MASK";
     materialSpecializationData.alphaMaskCutoff = material.alpha_cutoff;
-    materialSpecializationData.preTransformPos = !enabledFeatures.tessellationShader;
-    materialSpecializationData.tessLevel = 3.0f;
-    materialSpecializationData.tessAlpha = 1.0f;
+    materialSpecializationData.preTransformPos = !enabledFeatures.tessellationShader || _ts_._mode == 0;
+    materialSpecializationData.tessLevel = _ts_._level;
+    materialSpecializationData.tessAlpha = _ts_._alpha;
 
     // POI: Constant fragment shader material parameters will be set using specialization constants
     std::vector<vk::SpecializationMapEntry> specializationMapEntries = {
@@ -538,7 +570,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
     vk::SpecializationInfo specializationInfo = vks::initializers::specializationInfo(specializationMapEntries, sizeof(materialSpecializationData), &materialSpecializationData);
     shaderStages[0].pSpecializationInfo = &specializationInfo;
     shaderStages[1].pSpecializationInfo = &specializationInfo;
-    if (enabledFeatures.tessellationShader) {
+    if (enabledFeatures.tessellationShader && _ts_._mode > 0) {
       shaderStages[2].pSpecializationInfo = &specializationInfo;
       shaderStages[3].pSpecializationInfo = &specializationInfo;
     }
@@ -689,6 +721,34 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     } else {
       overlay->text("Sample-Rate Shading not supported.");
+    }
+  }
+
+  if (overlay->header("Tessellation Shader")) {
+    if (enabledFeatures.tessellationShader) {
+      auto tess_mode_labels = std::vector<std::string>{{
+          "Off",
+          "Passthrough",
+          "PN-Triangles"
+      }};
+      if (overlay->comboBox("Tessellation Mode", &_ts_._mode, tess_mode_labels)) {
+        prepare_pipelines();
+        buildCommandBuffers();
+      }
+
+      if (_ts_._mode == 2) {
+        if (overlay->sliderFloat("Tessellation Alpha", &_ts_._alpha, 0.0f, 1.0f)) {
+          prepare_pipelines();
+          buildCommandBuffers();
+        }
+
+        if (overlay->inputFloat("Tessellation Level", &_ts_._level, 0.25f, 2)) {
+          prepare_pipelines();
+          buildCommandBuffers();
+        }
+      }
+    } else {
+      overlay->text("Tessellation Shaders not supported.");
     }
   }
 

@@ -92,4 +92,15 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
     vk::UniquePipeline _pipeline;
   } _gs_;
+
+  struct {
+    int _mode = 0;
+    float _level = 3.0f;
+    float _alpha = 1.0f;
+
+    vk::ShaderModule _passthrough_module_tesc;
+    vk::ShaderModule _passthrough_module_tese;
+    vk::ShaderModule _pn_module_tesc;
+    vk::ShaderModule _pn_module_tese;
+  } _ts_;
 };
