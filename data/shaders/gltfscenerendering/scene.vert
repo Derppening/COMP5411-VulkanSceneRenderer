@@ -19,6 +19,8 @@ layout(push_constant) uniform PushConsts {
 	mat4 model;
 } primitive;
 
+layout(constant_id = 2) const bool preTransformPos = true;
+
 layout (location = 0) out vec3 outNormal;
 layout (location = 1) out vec3 outColor;
 layout (location = 2) out vec2 outUV;
@@ -31,10 +33,13 @@ void main() {
 	outColor = inColor;
 	outUV = inUV;
 	outTangent = inTangent;
-	gl_Position = uboScene.projection * uboScene.view * primitive.model * vec4(inPos.xyz, 1.0);
-	
-	outNormal = mat3(primitive.model) * inNormal;
+	gl_Position = vec4(inPos.xyz, 1.0);
+
 	vec4 pos = primitive.model * vec4(inPos, 1.0);
+	outNormal = mat3(primitive.model) * inNormal;
 	outFragPos = pos.xyz;
 	outViewVec = uboScene.viewPos.xyz - outFragPos;
+	if (preTransformPos) {
+		gl_Position = uboScene.projection * uboScene.view * pos;
+	}
 }

@@ -43,6 +43,7 @@ void vulkan_scene_renderer::getEnabledFeatures() {
   enabledFeatures.sampleRateShading = deviceFeatures.sampleRateShading;
   enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
   enabledFeatures.geometryShader = deviceFeatures.geometryShader;
+  enabledFeatures.tessellationShader = deviceFeatures.tessellationShader;
 
   if (query_pool::is_supported(deviceFeatures)) {
     enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
@@ -351,7 +352,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Descriptor set layout for passing matrices
   std::vector<vk::DescriptorSetLayoutBinding> set_layout_bindings = {
-      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, 0),
+      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, 0),
   };
   vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
 
@@ -382,7 +383,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   };
   vk::PipelineLayoutCreateInfo pipelineLayoutCI = vks::initializers::pipelineLayoutCreateInfo(setLayouts.data(), static_cast<uint32_t>(setLayouts.size()));
   // We will use push constants to push the local matrices of a primitive to the vertex shader
-  vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, sizeof(glm::mat4), 0);
+  vk::PushConstantRange pushConstantRange = vks::initializers::pushConstantRange(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, sizeof(glm::mat4), 0);
   // Push constant ranges are part of the pipeline layout
   pipelineLayoutCI.pushConstantRangeCount = 1;
   pipelineLayoutCI.pPushConstantRanges = &pushConstantRange;
@@ -451,6 +452,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
       vks::initializers::vertexInputAttributeDescription(0, 4, vk::Format::eR32G32B32Sfloat, offsetof(vulkan_gltf_scene::vertex, tangent)),
   };
   vk::PipelineVertexInputStateCreateInfo vertexInputStateCI = vks::initializers::pipelineVertexInputStateCreateInfo(vertexInputBindings, vertexInputAttributes);
+  auto tessellation_state = vks::initializers::pipelineTessellationStateCreateInfo(3);
 
   vk::GraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(*pipeline_layout, *renderPass, {});
   pipelineCI.pVertexInputState = &vertexInputStateCI;
@@ -461,31 +463,52 @@ void vulkan_scene_renderer::prepare_pipelines() {
   pipelineCI.pViewportState = &viewportStateCI;
   pipelineCI.pDepthStencilState = &depthStencilStateCI;
   pipelineCI.pDynamicState = &dynamicStateCI;
+  if (enabledFeatures.tessellationShader) {
+    pipelineCI.pTessellationState = &tessellation_state;
+  }
 
-  if (enabledFeatures.geometryShader) {
+  if (enabledFeatures.geometryShader && _gs_._length > 0) {
     shaderStages.resize(3);
     pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
     pipelineCI.pStages = shaderStages.data();
-
 
     shaderStages[0] = loadShader(getShadersPath() + "normals/normals.vert.spv", vk::ShaderStageFlagBits::eVertex);
     shaderStages[1] = loadShader(getShadersPath() + "normals/normals.frag.spv", vk::ShaderStageFlagBits::eFragment);
     shaderStages[2] = loadShader(getShadersPath() + "normals/normals.geom.spv", vk::ShaderStageFlagBits::eGeometry);
 
-    std::vector<vk::SpecializationMapEntry> specialization_map_entries = {
+    std::vector<vk::SpecializationMapEntry> gs_specialization_map_entries = {
         vks::initializers::specializationMapEntry(0, 0, sizeof(_gs_._length))
     };
-    auto specialization_info = vks::initializers::specializationInfo(specialization_map_entries, sizeof(_gs_._length), &_gs_._length);
-    shaderStages[2].pSpecializationInfo = &specialization_info;
+    auto gs_specialization_info = vks::initializers::specializationInfo(gs_specialization_map_entries, sizeof(_gs_._length), &_gs_._length);
+    shaderStages[2].pSpecializationInfo = &gs_specialization_info;
+
+    std::vector<vk::SpecializationMapEntry> vs_specialization_map_entries = {
+        vks::initializers::specializationMapEntry(2, 0, sizeof(enabledFeatures.tessellationShader))
+    };
+    int b = true;
+    auto vs_specialization_info = vks::initializers::specializationInfo(gs_specialization_map_entries, sizeof(b), &b);
+    shaderStages[1].pSpecializationInfo = &vs_specialization_info;
 
     _gs_._pipeline = device.createGraphicsPipelineUnique(*pipelineCache, {pipelineCI}).value;
   }
 
-  shaderStages.resize(2);
-  pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-  pipelineCI.pStages = shaderStages.data();
+  if (enabledFeatures.tessellationShader) {
+    inputAssemblyStateCI.topology = vk::PrimitiveTopology::ePatchList;
+
+    shaderStages.resize(4);
+    pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+    pipelineCI.pStages = shaderStages.data();
+  } else {
+    shaderStages.resize(2);
+    pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+    pipelineCI.pStages = shaderStages.data();
+  }
   shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
   shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
+  if (enabledFeatures.tessellationShader) {
+    shaderStages[2] = loadShader(getShadersPath() + "pntriangles/pntriangles.tesc.spv", vk::ShaderStageFlagBits::eTessellationControl);
+    shaderStages[3] = loadShader(getShadersPath() + "pntriangles/pntriangles.tese.spv", vk::ShaderStageFlagBits::eTessellationEvaluation);
+  }
 
   // POI: Instead if using a few fixed pipelines, we create one pipeline for each material using the properties of that material
   for (auto &material : gltf_scene.materials) {
@@ -493,18 +516,32 @@ void vulkan_scene_renderer::prepare_pipelines() {
     struct MaterialSpecializationData {
       bool alphaMask;
       float alphaMaskCutoff;
+      bool preTransformPos;
+      float tessLevel;
+      float tessAlpha;
     } materialSpecializationData;
 
     materialSpecializationData.alphaMask = material.alpha_mode == "MASK";
     materialSpecializationData.alphaMaskCutoff = material.alpha_cutoff;
+    materialSpecializationData.preTransformPos = !enabledFeatures.tessellationShader;
+    materialSpecializationData.tessLevel = 3.0f;
+    materialSpecializationData.tessAlpha = 1.0f;
 
     // POI: Constant fragment shader material parameters will be set using specialization constants
     std::vector<vk::SpecializationMapEntry> specializationMapEntries = {
         vks::initializers::specializationMapEntry(0, offsetof(MaterialSpecializationData, alphaMask), sizeof(MaterialSpecializationData::alphaMask)),
         vks::initializers::specializationMapEntry(1, offsetof(MaterialSpecializationData, alphaMaskCutoff), sizeof(MaterialSpecializationData::alphaMaskCutoff)),
+        vks::initializers::specializationMapEntry(2, offsetof(MaterialSpecializationData, preTransformPos), sizeof(MaterialSpecializationData::preTransformPos)),
+        vks::initializers::specializationMapEntry(3, offsetof(MaterialSpecializationData, tessLevel), sizeof(MaterialSpecializationData::tessLevel)),
+        vks::initializers::specializationMapEntry(4, offsetof(MaterialSpecializationData, tessAlpha), sizeof(MaterialSpecializationData::tessAlpha)),
     };
     vk::SpecializationInfo specializationInfo = vks::initializers::specializationInfo(specializationMapEntries, sizeof(materialSpecializationData), &materialSpecializationData);
+    shaderStages[0].pSpecializationInfo = &specializationInfo;
     shaderStages[1].pSpecializationInfo = &specializationInfo;
+    if (enabledFeatures.tessellationShader) {
+      shaderStages[2].pSpecializationInfo = &specializationInfo;
+      shaderStages[3].pSpecializationInfo = &specializationInfo;
+    }
 
     // For double sided materials, culling will be disabled
     rasterizationStateCI.cullMode = material.double_sided ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eBack;

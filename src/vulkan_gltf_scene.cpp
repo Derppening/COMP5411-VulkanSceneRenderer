@@ -240,7 +240,7 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
       current_parent = current_parent->parent;
     }
     // Pass the final matrix to the vertex shader using push constants
-    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, 0, {node_matrix});
+    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, 0, {node_matrix});
     for (const vulkan_gltf_scene::primitive& primitive : node.mesh.primitives) {
       if (primitive.index_count > 0) {
         vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
@@ -284,7 +284,7 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
       current_parent = current_parent->parent;
     }
     // Pass the final matrix to the vertex shader using push constants
-    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry, 0, {node_matrix});
+    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, 0, {node_matrix});
     for (const vulkan_gltf_scene::primitive& primitive : node.mesh.primitives) {
       if (primitive.index_count > 0) {
         vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
