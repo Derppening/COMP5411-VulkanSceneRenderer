@@ -51,6 +51,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   vk::SampleCountFlagBits _get_max_usable_sample_count();
   void _setup_multisample_target();
   glm::vec3 _calc_camera_direction();
+  void _save_screenshot(const char* filename);
   void _update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now = true);
 
   // Alignment required since boolean is just a int32_t
@@ -103,4 +104,10 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     vk::ShaderModule _pn_module_tesc;
     vk::ShaderModule _pn_module_tese;
   } _ts_;
+
+  struct {
+    bool _is_saved = false;
+    std::chrono::system_clock::time_point _save_time;
+    std::string _filename;
+  } _screenshot_;
 };
