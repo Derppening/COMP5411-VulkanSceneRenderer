@@ -29,17 +29,19 @@ layout (location = 4) out vec4 outTangent;
 layout (location = 5) out vec3 outFragPos;
 
 void main() {
-	outNormal = inNormal;
 	outColor = inColor;
 	outUV = inUV;
 	outTangent = inTangent;
-	gl_Position = vec4(inPos.xyz, 1.0);
 
-	vec4 pos = primitive.model * vec4(inPos, 1.0);
-	outNormal = mat3(primitive.model) * inNormal;
-	outFragPos = pos.xyz;
-	outViewVec = uboScene.viewPos.xyz - outFragPos;
 	if (preTransformPos) {
+		vec4 pos = primitive.model * vec4(inPos, 1.0);
+
 		gl_Position = uboScene.projection * uboScene.view * pos;
+		outNormal = mat3(primitive.model) * inNormal;
+		outFragPos = pos.xyz;
+		outViewVec = uboScene.viewPos.xyz - outFragPos;
+	} else {
+		gl_Position = vec4(inPos.xyz, 1.0);
+		outNormal = inNormal;
 	}
 }
