@@ -106,6 +106,11 @@ class light_cube : public application_bound {
     glm::vec3 color = glm::vec3{1.0, 1.0, 1.0};
   } _push_consts_;
 
+  struct {
+    vk::ShaderModule _vert;
+    vk::ShaderModule _frag;
+  } _shader_modules_;
+
   vk::UniquePipeline _pipeline_;
   vk::UniquePipelineLayout _pipeline_layout_;
   vk::UniqueDescriptorPool _descriptor_pool_;

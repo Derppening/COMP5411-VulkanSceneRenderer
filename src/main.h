@@ -65,6 +65,11 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   bool _wireframe_ = false;
 
+  struct {
+    vk::ShaderModule _vert;
+    vk::ShaderModule _frag;
+  } _shader_modules_;
+
   query_pool _query_pool_;
   light_cube _light_cube_;
 

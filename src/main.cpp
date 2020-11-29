@@ -450,9 +450,24 @@ void vulkan_scene_renderer::prepare_pipelines() {
   shaderStages.resize(2);
   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
   pipelineCI.pStages = shaderStages.data();
-  shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv", vk::ShaderStageFlagBits::eVertex);
-  shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv", vk::ShaderStageFlagBits::eFragment);
+  if (_shader_modules_._vert && _shader_modules_._frag) {
+    shaderStages[0].stage = vk::ShaderStageFlagBits::eVertex;
+    shaderStages[0].module = _shader_modules_._vert;
+    shaderStages[0].pName = "main";
+    shaderStages[1].stage = vk::ShaderStageFlagBits::eFragment;
+    shaderStages[1].module = _shader_modules_._frag;
+    shaderStages[1].pName = "main";
+  } else {
+    shaderStages[0] = loadShader(getShadersPath() + "gltfscenerendering/scene.vert.spv",
+                                 vk::ShaderStageFlagBits::eVertex);
+    shaderStages[1] = loadShader(getShadersPath() + "gltfscenerendering/scene.frag.spv",
+                                 vk::ShaderStageFlagBits::eFragment);
 
+    _shader_modules_._vert = shaderStages[0].module;
+    _shader_modules_._frag = shaderStages[1].module;
+  }
+
+  // TODO: Extract to separate class
   if (enabledFeatures.tessellationShader && _ts_._mode > 0) {
     inputAssemblyStateCI.topology = vk::PrimitiveTopology::ePatchList;
 

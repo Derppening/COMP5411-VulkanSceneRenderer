@@ -25,6 +25,12 @@ class normals_pipeline : public application_bound {
 
   float _length_ = 0.0f;
 
+  struct {
+    vk::ShaderModule _vert;
+    vk::ShaderModule _geom;
+    vk::ShaderModule _frag;
+  } _shader_modules_;
+
   vk::PipelineLayout _pipeline_layout_;
   vk::UniquePipeline _pipeline_;
 };

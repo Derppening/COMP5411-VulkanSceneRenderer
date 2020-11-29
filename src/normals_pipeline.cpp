@@ -58,9 +58,20 @@ void normals_pipeline::create_pipeline() {
   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
   pipelineCI.pStages = shaderStages.data();
 
-  shaderStages[0] = app().loadShader(app().getShadersPath() + "normals/normals.vert.spv", vk::ShaderStageFlagBits::eVertex);
-  shaderStages[1] = app().loadShader(app().getShadersPath() + "normals/normals.frag.spv", vk::ShaderStageFlagBits::eFragment);
-  shaderStages[2] = app().loadShader(app().getShadersPath() + "normals/normals.geom.spv", vk::ShaderStageFlagBits::eGeometry);
+  if (!_shader_modules_._vert) {
+    _shader_modules_._vert = app().loadShader(app().getShadersPath() + "normals/normals.vert.spv", vk::ShaderStageFlagBits::eVertex).module;
+    _shader_modules_._geom = app().loadShader(app().getShadersPath() + "normals/normals.geom.spv", vk::ShaderStageFlagBits::eGeometry).module;
+    _shader_modules_._frag = app().loadShader(app().getShadersPath() + "normals/normals.frag.spv", vk::ShaderStageFlagBits::eFragment).module;
+  }
+  shaderStages[0].stage = vk::ShaderStageFlagBits::eVertex;
+  shaderStages[0].module = _shader_modules_._vert;
+  shaderStages[0].pName = "main";
+  shaderStages[1].stage = vk::ShaderStageFlagBits::eFragment;
+  shaderStages[1].module = _shader_modules_._frag;
+  shaderStages[1].pName = "main";
+  shaderStages[2].stage = vk::ShaderStageFlagBits::eGeometry;
+  shaderStages[2].module = _shader_modules_._geom;
+  shaderStages[2].pName = "main";
 
   std::vector<vk::SpecializationMapEntry> gs_specialization_map_entries = {
       vks::initializers::specializationMapEntry(0, 0, sizeof(_length_))

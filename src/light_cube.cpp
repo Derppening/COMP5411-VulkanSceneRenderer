@@ -130,8 +130,22 @@ void light_cube::prepare_pipeline() {
   pipeline_ci.pDynamicState = &dynamic_state;
   pipeline_ci.stageCount = static_cast<uint32_t>(shader_stages.size());
   pipeline_ci.pStages = shader_stages.data();
-  shader_stages[0] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.vert.spv", vk::ShaderStageFlagBits::eVertex);
-  shader_stages[1] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.frag.spv", vk::ShaderStageFlagBits::eFragment);
+  if (_shader_modules_._vert && _shader_modules_._frag) {
+    shader_stages[0].stage = vk::ShaderStageFlagBits::eVertex;
+    shader_stages[0].module = _shader_modules_._vert;
+    shader_stages[0].pName = "main";
+    shader_stages[1].stage = vk::ShaderStageFlagBits::eFragment;
+    shader_stages[1].module = _shader_modules_._frag;
+    shader_stages[1].pName = "main";
+  } else {
+    shader_stages[0] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.vert.spv",
+                                        vk::ShaderStageFlagBits::eVertex);
+    shader_stages[1] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.frag.spv",
+                                        vk::ShaderStageFlagBits::eFragment);
+
+    _shader_modules_._vert = shader_stages[0].module;
+    _shader_modules_._frag = shader_stages[1].module;
+  }
   _pipeline_ = app().device.createGraphicsPipelineUnique(*app().pipelineCache, pipeline_ci).value;
 }
 
