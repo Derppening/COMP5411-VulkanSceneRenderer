@@ -14,25 +14,6 @@
 
 class vulkan_scene_renderer : public VulkanExampleBase {
  public:
-  vulkan_gltf_scene gltf_scene;
-
-  struct shader_data {
-    vks::Buffer buffer;
-    struct values {
-      glm::mat4 projection;
-      glm::mat4 view;
-      glm::vec4 viewPos;
-    } values;
-  } shader_data;
-
-  vk::UniquePipelineLayout pipeline_layout;
-  vk::DescriptorSet descriptor_set;
-
-  struct descriptor_set_layouts {
-    vk::UniqueDescriptorSetLayout matrices;
-    vk::UniqueDescriptorSetLayout textures;
-  } descriptor_set_layouts;
-
   vulkan_scene_renderer();
   ~vulkan_scene_renderer() override;
   void getEnabledFeatures() override;
@@ -55,6 +36,25 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void _setup_multisample_target();
   glm::vec3 _calc_camera_direction();
   void _update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now = true);
+
+  vulkan_gltf_scene _gltf_scene_;
+
+  struct shader_data {
+    vks::Buffer buffer;
+    struct values {
+      glm::mat4 projection;
+      glm::mat4 view;
+      glm::vec4 viewPos;
+    } values;
+  } shader_data;
+
+  vk::UniquePipelineLayout _pipeline_layout_;
+  vk::DescriptorSet _descriptor_set_;
+
+  struct descriptor_set_layouts {
+    vk::UniqueDescriptorSetLayout matrices;
+    vk::UniqueDescriptorSetLayout textures;
+  } descriptor_set_layouts;
 
   // Alignment required since boolean is just a int32_t
   struct alignas(4) _settings {

@@ -25,7 +25,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
 
   _light_cube_.unbind();
   _gs_pipeline_.unbind();
-  pipeline_layout.reset();
+  _pipeline_layout_.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
 
@@ -84,18 +84,18 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     _query_pool_.begin(*drawCmdBuffers[i]);
 
     // Bind scene matrices descriptor to set 0
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, {descriptor_set}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 0, {_descriptor_set_}, {});
     // Bind settings descriptor to set 2
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 2, {_settings_ubo_.descriptor_set()}, {});
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 3, {_light_ubo_.descriptor_set()}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 2, {_settings_ubo_.descriptor_set()}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 3, {_light_ubo_.descriptor_set()}, {});
 
     // POI: Draw the glTF scene
     if (_draw_scene_) {
-      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
+      _gltf_scene_.draw(*drawCmdBuffers[i], *_pipeline_layout_);
 
     }
     if (_gs_pipeline_.enabled()) {
-      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout, _gs_pipeline_.pipeline());
+      _gltf_scene_.draw(*drawCmdBuffers[i], *_pipeline_layout_, _gs_pipeline_.pipeline());
     }
 
     if (_draw_light_) {
@@ -238,23 +238,23 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
   bool file_loaded = gltf_context.LoadASCIIFromFile(&gltf_input, &error, &warning, filename);
 
   // Pass some Vulkan resources required for setup and rendering to the glTF model loading class
-  gltf_scene.vulkan_device = vulkanDevice.get();
-  gltf_scene.copy_queue = queue;
+  _gltf_scene_.vulkan_device = vulkanDevice.get();
+  _gltf_scene_.copy_queue = queue;
 
   std::size_t pos = filename.find_last_of('/');
-  gltf_scene.path = filename.substr(0, pos);
+  _gltf_scene_.path = filename.substr(0, pos);
 
   std::vector<std::uint32_t> index_buffer;
   std::vector<vulkan_gltf_scene::vertex> vertex_buffer;
 
   if (file_loaded) {
-    gltf_scene.load_images(gltf_input);
-    gltf_scene.load_materials(gltf_input);
-    gltf_scene.load_textures(gltf_input);
+    _gltf_scene_.load_images(gltf_input);
+    _gltf_scene_.load_materials(gltf_input);
+    _gltf_scene_.load_textures(gltf_input);
     const tinygltf::Scene& scene = gltf_input.scenes[0];
     for (int i : scene.nodes) {
       const tinygltf::Node node = gltf_input.nodes[static_cast<std::size_t>(i)];
-      gltf_scene.load_node(node, gltf_input, nullptr, index_buffer, vertex_buffer);
+      _gltf_scene_.load_node(node, gltf_input, nullptr, index_buffer, vertex_buffer);
     }
   } else {
     vks::tools::exitFatal("Could not open the glTF file.\n\nThe file is part of the additional asset pack.\n\nRun \"download_assets.py\" in the repository root to download the latest version.", -1);
@@ -267,7 +267,7 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
 
   std::size_t vertex_buffer_size = vertex_buffer.size() * sizeof(vulkan_gltf_scene::vertex);
   std::size_t index_buffer_size = index_buffer.size() * sizeof(std::uint32_t);
-  gltf_scene.indices.count = static_cast<int>(index_buffer.size());
+  _gltf_scene_.indices.count = static_cast<int>(index_buffer.size());
 
   struct staging_buffer {
     vk::UniqueBuffer buffer;
@@ -296,24 +296,24 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
       vertex_buffer_size,
-      &gltf_scene.vertices.buffer,
-      &gltf_scene.vertices.memory);
+      &_gltf_scene_.vertices.buffer,
+      &_gltf_scene_.vertices.memory);
   vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
       index_buffer_size,
-      &gltf_scene.indices.buffer,
-      &gltf_scene.indices.memory);
+      &_gltf_scene_.indices.buffer,
+      &_gltf_scene_.indices.memory);
 
   // Copy data from staging buffers (host) do device local buffer (gpu)
   vk::UniqueCommandBuffer copyCmd = vulkanDevice->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
   vk::BufferCopy copyRegion = {};
 
   copyRegion.size = vertex_buffer_size;
-  copyCmd->copyBuffer(*vertex_staging.buffer, *gltf_scene.vertices.buffer, {copyRegion});
+  copyCmd->copyBuffer(*vertex_staging.buffer, *_gltf_scene_.vertices.buffer, {copyRegion});
 
   copyRegion.size = index_buffer_size;
-  copyCmd->copyBuffer(*index_staging.buffer, *gltf_scene.indices.buffer, {copyRegion});
+  copyCmd->copyBuffer(*index_staging.buffer, *_gltf_scene_.indices.buffer, {copyRegion});
 
   vulkanDevice->flushCommandBuffer(copyCmd, queue, true);
 
@@ -337,10 +337,10 @@ void vulkan_scene_renderer::setup_descriptors() {
   // Two combined image samplers per material as each material uses color and normal maps
   std::vector<vk::DescriptorPoolSize> pool_sizes = {
       vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 6),
-      vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(gltf_scene.materials.size()) * 2),
+      vks::initializers::descriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, static_cast<uint32_t>(_gltf_scene_.materials.size()) * 2),
   };
   // One set for matrices and one per model image/texture
-  const uint32_t max_set_count = static_cast<uint32_t>(gltf_scene.images.size()) + 1;
+  const uint32_t max_set_count = static_cast<uint32_t>(_gltf_scene_.images.size()) + 1;
   vk::DescriptorPoolCreateInfo descriptor_pool_info = vks::initializers::descriptorPoolCreateInfo(pool_sizes, max_set_count);
   descriptorPool = device.createDescriptorPoolUnique(descriptor_pool_info);
 
@@ -381,21 +381,21 @@ void vulkan_scene_renderer::setup_descriptors() {
   // Push constant ranges are part of the pipeline layout
   pipelineLayoutCI.pushConstantRangeCount = 1;
   pipelineLayoutCI.pPushConstantRanges = &pushConstantRange;
-  pipeline_layout = device.createPipelineLayoutUnique(pipelineLayoutCI);
+  _pipeline_layout_ = device.createPipelineLayoutUnique(pipelineLayoutCI);
 
   // Descriptor set for scene matrices
   vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.matrices, 1);
-  descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
+  _descriptor_set_ = device.allocateDescriptorSets(allocInfo)[0];
   vk::DescriptorBufferInfo shader_data_buffer_descriptor = shader_data.buffer.descriptor;
-  vk::WriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(descriptor_set, vk::DescriptorType::eUniformBuffer, 0, &shader_data_buffer_descriptor);
+  vk::WriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(_descriptor_set_, vk::DescriptorType::eUniformBuffer, 0, &shader_data_buffer_descriptor);
   device.updateDescriptorSets({writeDescriptorSet}, {});
 
   // Descriptor sets for materials
-  for (auto& material : gltf_scene.materials) {
+  for (auto& material : _gltf_scene_.materials) {
     const vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.textures, 1);
     material.descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
-    vk::DescriptorImageInfo colorMap = gltf_scene.get_texture_descriptor(material.base_color_texture_index);
-    vk::DescriptorImageInfo normalMap = gltf_scene.get_texture_descriptor(material.normal_texture_index);
+    vk::DescriptorImageInfo colorMap = _gltf_scene_.get_texture_descriptor(material.base_color_texture_index);
+    vk::DescriptorImageInfo normalMap = _gltf_scene_.get_texture_descriptor(material.normal_texture_index);
     std::vector<vk::WriteDescriptorSet> writeDescriptorSets = {
         vks::initializers::writeDescriptorSet(material.descriptor_set, vk::DescriptorType::eCombinedImageSampler, 0, &colorMap),
         vks::initializers::writeDescriptorSet(material.descriptor_set, vk::DescriptorType::eCombinedImageSampler, 1, &normalMap),
@@ -448,7 +448,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineVertexInputStateCreateInfo vertexInputStateCI = vks::initializers::pipelineVertexInputStateCreateInfo(vertexInputBindings, vertexInputAttributes);
   auto tessellation_state = vks::initializers::pipelineTessellationStateCreateInfo(3);
 
-  vk::GraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(*pipeline_layout, *renderPass, {});
+  vk::GraphicsPipelineCreateInfo pipelineCI = vks::initializers::pipelineCreateInfo(*_pipeline_layout_, *renderPass, {});
   pipelineCI.pVertexInputState = &vertexInputStateCI;
   pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
   pipelineCI.pRasterizationState = &rasterizationStateCI;
@@ -462,7 +462,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   }
 
   _gs_pipeline_.unbind();
-  _gs_pipeline_.set_pipeline_layout(*pipeline_layout);
+  _gs_pipeline_.set_pipeline_layout(*_pipeline_layout_);
   _gs_pipeline_.bind(*this);
 
   shaderStages.resize(2);
@@ -516,7 +516,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   }
 
   // POI: Instead if using a few fixed pipelines, we create one pipeline for each material using the properties of that material
-  for (auto &material : gltf_scene.materials) {
+  for (auto &material : _gltf_scene_.materials) {
 
     struct MaterialSpecializationData {
       bool alphaMask;
