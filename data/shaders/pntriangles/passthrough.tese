@@ -30,8 +30,8 @@ layout (location = 5) out vec3 oFragPos;
 void main(void)
 {
 	vec4 pos = (gl_TessCoord.x * gl_in[0].gl_Position) +
-					(gl_TessCoord.y * gl_in[1].gl_Position) +
-					(gl_TessCoord.z * gl_in[2].gl_Position);
+			   (gl_TessCoord.y * gl_in[1].gl_Position) +
+			   (gl_TessCoord.z * gl_in[2].gl_Position);
 	vec4 fragPos = primitive.model * pos;
 	oFragPos = fragPos.xyz;
 	gl_Position = ubo.projection * ubo.view * fragPos;

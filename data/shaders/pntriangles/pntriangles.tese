@@ -61,37 +61,37 @@ void main() {
     vec3 n101 = normalize(vec3(iPnPatch[0].n101, iPnPatch[1].n101, iPnPatch[2].n101));
 
     // compute texcoords
-    oTexCoord  = gl_TessCoord[2]*iTexCoord[0] + gl_TessCoord[0]*iTexCoord[1] + gl_TessCoord[1]*iTexCoord[2];
+    oTexCoord  = gl_TessCoord[2] * iTexCoord[0] + gl_TessCoord[0] * iTexCoord[1] + gl_TessCoord[1] * iTexCoord[2];
 
     // normal
     // Barycentric normal
-    vec3 barNormal = gl_TessCoord[2]*iNormal[0] + gl_TessCoord[0]*iNormal[1] + gl_TessCoord[1]*iNormal[2];
-    vec3 pnNormal  = iNormal[0]*uvwSquared[2] + iNormal[1]*uvwSquared[0] + iNormal[2]*uvwSquared[1]
-                   + n110*uvw[2]*uvw[0] + n011*uvw[0]*uvw[1]+ n101*uvw[2]*uvw[1];
+    vec3 barNormal = gl_TessCoord[2] * iNormal[0] + gl_TessCoord[0] * iNormal[1] + gl_TessCoord[1] * iNormal[2];
+    vec3 pnNormal  = iNormal[0] * uvwSquared[2] + iNormal[1] * uvwSquared[0] + iNormal[2] * uvwSquared[1]
+                   + n110 * uvw[2] * uvw[0] + n011 * uvw[0] * uvw[1]+ n101 * uvw[2] * uvw[1];
     oNormal = tessAlpha*pnNormal + (1.0-tessAlpha) * barNormal;
 
     // compute interpolated pos
-    vec3 barPos = gl_TessCoord[2]*gl_in[0].gl_Position.xyz
-                + gl_TessCoord[0]*gl_in[1].gl_Position.xyz
-                + gl_TessCoord[1]*gl_in[2].gl_Position.xyz;
+    vec3 barPos = gl_TessCoord[2] * gl_in[0].gl_Position.xyz
+                + gl_TessCoord[0] * gl_in[1].gl_Position.xyz
+                + gl_TessCoord[1] * gl_in[2].gl_Position.xyz;
 
     // save some computations
     uvwSquared *= 3.0;
 
     // compute PN position
-    vec3 pnPos  = gl_in[0].gl_Position.xyz*uvwCubed[2]
-                + gl_in[1].gl_Position.xyz*uvwCubed[0]
-                + gl_in[2].gl_Position.xyz*uvwCubed[1]
-                + b210*uvwSquared[2]*uvw[0]
-                + b120*uvwSquared[0]*uvw[2]
-                + b201*uvwSquared[2]*uvw[1]
-                + b021*uvwSquared[0]*uvw[1]
-                + b102*uvwSquared[1]*uvw[2]
-                + b012*uvwSquared[1]*uvw[0]
-                + b111*6.0*uvw[0]*uvw[1]*uvw[2];
+    vec3 pnPos  = gl_in[0].gl_Position.xyz * uvwCubed[2]
+                + gl_in[1].gl_Position.xyz * uvwCubed[0]
+                + gl_in[2].gl_Position.xyz * uvwCubed[1]
+                + b210*uvwSquared[2] * uvw[0]
+                + b120*uvwSquared[0] * uvw[2]
+                + b201*uvwSquared[2] * uvw[1]
+                + b021*uvwSquared[0] * uvw[1]
+                + b102*uvwSquared[1] * uvw[2]
+                + b012*uvwSquared[1] * uvw[0]
+                + b111*6.0*uvw[0] * uvw[1]*uvw[2];
 
     // final position and normal
-    vec3 finalPos = (1.0-tessAlpha)*barPos + tessAlpha*pnPos;
+    vec3 finalPos = (1.0 - tessAlpha) * barPos + tessAlpha * pnPos;
     vec4 fragPos = primitive.model * vec4(finalPos, 1.0);
     oFragPos = fragPos.xyz;
     gl_Position = ubo.projection * ubo.view * fragPos;

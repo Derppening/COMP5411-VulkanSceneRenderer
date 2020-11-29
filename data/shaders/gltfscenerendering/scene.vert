@@ -41,7 +41,7 @@ void main() {
 		outFragPos = pos.xyz;
 		outViewVec = uboScene.viewPos.xyz - outFragPos;
 	} else {
-		gl_Position = vec4(inPos.xyz, 1.0);
+		gl_Position = vec4(inPos, 1.0);
 		outNormal = inNormal;
 	}
 }

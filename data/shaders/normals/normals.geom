@@ -21,7 +21,7 @@ layout(constant_id = 0) const float NORMAL_LENGTH = 5.0f;
 void main(void) {
     for (int i = 0; i < gl_in.length(); i++) {
         vec3 pos = gl_in[i].gl_Position.xyz;
-        vec3 normal = normalize(inNormal[i].xyz);
+        vec3 normal = normalize(inNormal[i]);
 
         gl_Position = ubo.projection * ubo.view * (primitive.model * vec4(pos, 1.0));
         outColor = vec3(1.0, 0.0, 0.0);
