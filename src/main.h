@@ -4,6 +4,7 @@
 
 #include "light_cube.h"
 #include "light_ubo.h"
+#include "multisample_target.h"
 #include "normals_pipeline.h"
 #include "query_pool.h"
 #include "screenshot.h"
@@ -76,18 +77,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   vk::SampleCountFlagBits _sample_count_ = vk::SampleCountFlagBits::e1;
   int _sample_count_option_ = 0;
 
-  struct {
-    struct {
-      vk::UniqueImage _image;
-      vk::UniqueImageView _view;
-      vk::UniqueDeviceMemory _memory;
-    } _color;
-    struct {
-      vk::UniqueImage _image;
-      vk::UniqueImageView _view;
-      vk::UniqueDeviceMemory _memory;
-    } _depth;
-  } _multisample_target_;
+  image_multisample_target _color_ms_target_;
+  depth_multisample_target _depth_ms_target_;
 
   normals_pipeline _gs_pipeline_;
 

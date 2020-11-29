@@ -1,6 +1,7 @@
 add_executable(VulkanSceneRenderer
         main.cpp
         application_bound.cpp
+        multisample_target.cpp
         light_cube.cpp
         light_ubo.cpp
         normals_pipeline.cpp

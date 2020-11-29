@@ -29,12 +29,8 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
 
-  _multisample_target_._color._image.reset();
-  _multisample_target_._color._view.reset();
-  _multisample_target_._color._memory.reset();
-  _multisample_target_._depth._image.reset();
-  _multisample_target_._depth._view.reset();
-  _multisample_target_._depth._memory.reset();
+  _depth_ms_target_.unbind();
+  _color_ms_target_.unbind();
 
   _light_ubo_.destroy();
   _settings_ubo_.destroy();
@@ -211,8 +207,8 @@ void vulkan_scene_renderer::setupFrameBuffer() {
 
     _setup_multisample_target();
 
-    attachments[0] = *_multisample_target_._color._view;
-    attachments[2] = *_multisample_target_._depth._view;
+    attachments[0] = const_cast<const image_multisample_target&>(_color_ms_target_).view();
+    attachments[2] = const_cast<const depth_multisample_target&>(_depth_ms_target_).view();
 
     vk::FramebufferCreateInfo framebuffer_create_info = {};
     framebuffer_create_info.pNext = nullptr;
@@ -851,96 +847,14 @@ vk::SampleCountFlagBits vulkan_scene_renderer::_get_max_usable_sample_count() {
 }
 
 void vulkan_scene_renderer::_setup_multisample_target() {
-  assert((deviceProperties.limits.framebufferColorSampleCounts >= _sample_count_) && (deviceProperties.limits.framebufferDepthSampleCounts >= _sample_count_));
+  _depth_ms_target_.unbind();
+  _color_ms_target_.unbind();
 
-  // Color target
-  auto info = vks::initializers::imageCreateInfo();
-  info.imageType = vk::ImageType::e2D;
-  info.format = swapChain.colorFormat;
-  info.extent.width = width;
-  info.extent.height = height;
-  info.extent.depth = 1;
-  info.mipLevels = 1;
-  info.arrayLayers = 1;
-  info.sharingMode = vk::SharingMode::eExclusive;
-  info.tiling = vk::ImageTiling::eOptimal;
-  info.samples = _sample_count_;
-  // Image will only be used as a transient target
-  info.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment;
-  info.initialLayout = vk::ImageLayout::eUndefined;
+  _color_ms_target_.sample_count() = _sample_count_;
+  _depth_ms_target_.sample_count() = _sample_count_;
 
-  _multisample_target_._color._image = device.createImageUnique(info);
-
-  vk::MemoryRequirements mem_reqs = device.getImageMemoryRequirements(*_multisample_target_._color._image);
-  auto mem_alloc = vks::initializers::memoryAllocateInfo();
-  mem_alloc.allocationSize = mem_reqs.size;
-  // We prefer a lazily allocated memory type
-  // This means that the memory gets allocated when the implementation sees fit, e.g. when first using the images
-  vk::Bool32 lazy_mem_type_present;
-  mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
-  if (!lazy_mem_type_present) {
-    // If this is not available, fall back to device local memory
-    mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-  }
-  _multisample_target_._color._memory = device.allocateMemoryUnique(mem_alloc);
-  device.bindImageMemory(*_multisample_target_._color._image, *_multisample_target_._color._memory, 0);
-
-  // Create image view for the MSAA target
-  auto view_info = vks::initializers::imageViewCreateInfo();
-  view_info.image = *_multisample_target_._color._image;
-  view_info.viewType = vk::ImageViewType::e2D;
-  view_info.format = swapChain.colorFormat;
-  view_info.components.r = vk::ComponentSwizzle::eR;
-  view_info.components.g = vk::ComponentSwizzle::eG;
-  view_info.components.b = vk::ComponentSwizzle::eB;
-  view_info.components.a = vk::ComponentSwizzle::eA;
-  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-  view_info.subresourceRange.levelCount = 1;
-  view_info.subresourceRange.layerCount = 1;
-
-  _multisample_target_._color._view = device.createImageViewUnique(view_info);
-
-  // Depth target
-  info.imageType = vk::ImageType::e2D;
-  info.format = depthFormat;
-  info.extent.width = width;
-  info.extent.height = height;
-  info.extent.depth = 1;
-  info.mipLevels = 1;
-  info.arrayLayers = 1;
-  info.sharingMode = vk::SharingMode::eExclusive;
-  info.tiling = vk::ImageTiling::eOptimal;
-  info.samples = _sample_count_;
-  // Image will only be used as a transient target
-  info.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
-  info.initialLayout = vk::ImageLayout::eUndefined;
-
-  _multisample_target_._depth._image = device.createImageUnique(info);
-
-  mem_reqs = device.getImageMemoryRequirements(*_multisample_target_._depth._image);
-  mem_alloc = vks::initializers::memoryAllocateInfo();
-  mem_alloc.allocationSize = mem_reqs.size;
-  mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
-  if (!lazy_mem_type_present) {
-    mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-  }
-
-  _multisample_target_._depth._memory = device.allocateMemoryUnique(mem_alloc);
-  device.bindImageMemory(*_multisample_target_._depth._image, *_multisample_target_._depth._memory, 0);
-
-  // Create image view for the MSAA target
-  view_info.image = *_multisample_target_._depth._image;
-  view_info.viewType = vk::ImageViewType::e2D;
-  view_info.format = depthFormat;
-  view_info.components.r = vk::ComponentSwizzle::eR;
-  view_info.components.g = vk::ComponentSwizzle::eG;
-  view_info.components.b = vk::ComponentSwizzle::eB;
-  view_info.components.a = vk::ComponentSwizzle::eA;
-  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-  view_info.subresourceRange.levelCount = 1;
-  view_info.subresourceRange.layerCount = 1;
-
-  _multisample_target_._depth._view = device.createImageViewUnique(view_info);
+  _color_ms_target_.bind(*this);
+  _depth_ms_target_.bind(*this);
 }
 
 glm::vec3 vulkan_scene_renderer::_calc_camera_direction() {
