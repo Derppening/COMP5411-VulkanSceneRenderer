@@ -4,6 +4,7 @@ add_executable(VulkanSceneRenderer
         light_cube.cpp
         light_ubo.cpp
         query_pool.cpp
+        screenshot.cpp
         vulkan_gltf_scene.cpp)
 target_compile_options(VulkanSceneRenderer PUBLIC ${CXX_WARN_FLAGS})
 target_include_directories(VulkanSceneRenderer SYSTEM PUBLIC
