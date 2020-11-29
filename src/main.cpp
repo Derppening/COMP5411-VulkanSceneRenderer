@@ -38,7 +38,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   _light_ubo_.destroy();
   _settings_ubo_.destroy();
   shader_data.buffer.destroy();
-  _query_pool_.destroy();
+  _query_pool_.unbind();
 }
 
 void vulkan_scene_renderer::getEnabledFeatures() {
@@ -46,13 +46,8 @@ void vulkan_scene_renderer::getEnabledFeatures() {
   enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
   enabledFeatures.geometryShader = deviceFeatures.geometryShader;
   enabledFeatures.tessellationShader = deviceFeatures.tessellationShader;
-
-  if (query_pool::is_supported(deviceFeatures)) {
-    enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
-  }
-  if (deviceFeatures.fillModeNonSolid) {
-    enabledFeatures.fillModeNonSolid = VK_TRUE;
-  }
+  enabledFeatures.pipelineStatisticsQuery = deviceFeatures.pipelineStatisticsQuery;
+  enabledFeatures.fillModeNonSolid = deviceFeatures.fillModeNonSolid;
 }
 
 void vulkan_scene_renderer::buildCommandBuffers() {
@@ -629,7 +624,7 @@ void vulkan_scene_renderer::prepare() {
   _update_sample_count(_sample_count_, false);
   VulkanExampleBase::prepare();
   load_assets();
-  _query_pool_.setup(device, enabledFeatures);
+  _query_pool_.bind(*this);
   _light_cube_.setup(*this);
   prepare_uniform_buffers();
   setup_descriptors();
