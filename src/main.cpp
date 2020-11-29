@@ -335,7 +335,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   descriptorPool = device.createDescriptorPoolUnique(descriptor_pool_info);
 
   // Descriptor set layout for passing matrices
-  _matrices_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eFragment);
+  _matrices_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eTessellationEvaluation);
 
   // Descriptor set layout for passing material textures
   auto set_layout_bindings = std::vector{
