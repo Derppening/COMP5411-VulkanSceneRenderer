@@ -1,5 +1,6 @@
 add_executable(VulkanSceneRenderer
         main.cpp
+        application_bound.cpp
         light_cube.cpp
         light_ubo.cpp
         query_pool.cpp
