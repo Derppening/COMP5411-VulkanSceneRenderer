@@ -38,18 +38,6 @@ if (NOT glfw_POPULATED)
 endif ()
 
 FetchContent_Declare(
-        glm
-        GIT_REPOSITORY https://github.com/g-truc/glm.git
-        GIT_TAG 0.9.9.8
-        GIT_SHALLOW ON)
-FetchContent_GetProperties(glm)
-if (NOT glm_POPULATED)
-    FetchContent_Populate(glm)
-
-    add_subdirectory(${glm_SOURCE_DIR})
-endif ()
-
-FetchContent_Declare(
         imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG v1.79

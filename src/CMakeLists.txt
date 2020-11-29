@@ -14,5 +14,4 @@ target_include_directories(VulkanSceneRenderer SYSTEM PUBLIC
 target_link_libraries(VulkanSceneRenderer PUBLIC
         base
         ${Vulkan_LIBRARIES}
-        fmt::fmt
-        glm::glm)
+        fmt::fmt)
