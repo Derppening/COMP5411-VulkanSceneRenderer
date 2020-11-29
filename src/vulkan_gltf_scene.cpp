@@ -4,10 +4,8 @@
 
 vulkan_gltf_scene::~vulkan_gltf_scene() {
   // Release all Vulkan resources allocated for the model
-  vertices.buffer.reset();
-  vertices.memory.reset();
-  indices.buffer.reset();
-  indices.memory.reset();
+  vertices.destroy();
+  indices.buffer.destroy();
   for (vulkan_gltf_scene::image& image : images) {
     image.texture.view.reset();
     image.texture.image.reset();
@@ -260,7 +258,7 @@ void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer, vk::PipelineLayou
   // All vertices and indices are stored in single buffers, so we only need to bind once
   auto offsets = std::array<vk::DeviceSize, 1>{{0}};
   command_buffer.bindVertexBuffers(0, {*vertices.buffer}, offsets);
-  command_buffer.bindIndexBuffer(*indices.buffer, 0, vk::IndexType::eUint32);
+  command_buffer.bindIndexBuffer(*indices.buffer.buffer, 0, vk::IndexType::eUint32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
     draw_node(command_buffer, pipeline_layout, node);
@@ -306,7 +304,7 @@ void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer,
   // All vertices and indices are stored in single buffers, so we only need to bind once
   auto offsets = std::array<vk::DeviceSize, 1>{{0}};
   command_buffer.bindVertexBuffers(0, {*vertices.buffer}, offsets);
-  command_buffer.bindIndexBuffer(*indices.buffer, 0, vk::IndexType::eUint32);
+  command_buffer.bindIndexBuffer(*indices.buffer.buffer, 0, vk::IndexType::eUint32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
     draw_node(command_buffer, pipeline_layout, pipeline, node);

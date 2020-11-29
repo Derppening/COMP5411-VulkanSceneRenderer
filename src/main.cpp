@@ -268,41 +268,34 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
   std::size_t index_buffer_size = index_buffer.size() * sizeof(std::uint32_t);
   _gltf_scene_.indices.count = static_cast<int>(index_buffer.size());
 
-  struct staging_buffer {
-    vk::UniqueBuffer buffer;
-    vk::UniqueDeviceMemory memory;
-  } vertex_staging, index_staging;
+  vks::Buffer vertex_staging, index_staging;
 
   vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+      &vertex_staging,
       vertex_buffer_size,
-      &vertex_staging.buffer,
-      &vertex_staging.memory,
       vertex_buffer.data());
 
   // Index data
   vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+      &index_staging,
       index_buffer_size,
-      &index_staging.buffer,
-      &index_staging.memory,
       index_buffer.data());
 
   // Create device local buffers (target)
   vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
-      vertex_buffer_size,
-      &_gltf_scene_.vertices.buffer,
-      &_gltf_scene_.vertices.memory);
+      &_gltf_scene_.vertices,
+      vertex_buffer_size);
   vulkanDevice->createBuffer(
       vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eDeviceLocal,
-      index_buffer_size,
       &_gltf_scene_.indices.buffer,
-      &_gltf_scene_.indices.memory);
+      index_buffer_size);
 
   // Copy data from staging buffers (host) do device local buffer (gpu)
   vk::UniqueCommandBuffer copyCmd = vulkanDevice->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
@@ -312,15 +305,13 @@ void vulkan_scene_renderer::load_gltf_file(std::string filename) {
   copyCmd->copyBuffer(*vertex_staging.buffer, *_gltf_scene_.vertices.buffer, {copyRegion});
 
   copyRegion.size = index_buffer_size;
-  copyCmd->copyBuffer(*index_staging.buffer, *_gltf_scene_.indices.buffer, {copyRegion});
+  copyCmd->copyBuffer(*index_staging.buffer, *_gltf_scene_.indices.buffer.buffer, {copyRegion});
 
   vulkanDevice->flushCommandBuffer(copyCmd, queue, true);
 
   // Free staging resources
-  vertex_staging.buffer.reset();
-  vertex_staging.memory.reset();
-  index_staging.buffer.reset();
-  index_staging.memory.reset();
+  vertex_staging.destroy();
+  index_staging.destroy();
 }
 
 void vulkan_scene_renderer::load_assets() {

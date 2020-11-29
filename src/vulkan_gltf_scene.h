@@ -18,15 +18,11 @@ class vulkan_gltf_scene {
     glm::vec4 tangent;
   };
 
-  struct {
-    vk::UniqueBuffer buffer;
-    vk::UniqueDeviceMemory memory;
-  } vertices;
+  vks::Buffer vertices;
 
   struct {
     int count;
-    vk::UniqueBuffer buffer;
-    vk::UniqueDeviceMemory memory;
+    vks::Buffer buffer;
   } indices;
 
   struct node;
