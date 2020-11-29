@@ -6,14 +6,12 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include "application_bound.h"
 #include "ubo.h"
 
-class light_cube {
+class light_cube : public application_bound {
  public:
   explicit light_cube(glm::mat4 projection = glm::mat4{}, glm::mat4 model = glm::mat4{}, glm::mat4 view = glm::mat4{});
-
-  void setup(VulkanExampleBase& app);
-  void destroy();
 
   vk::SampleCountFlagBits& sample_count() noexcept { return _sample_count_; }
   bool& wireframe() { return _wireframe_; }
@@ -25,6 +23,10 @@ class light_cube {
   void prepare_pipeline();
   void draw(vk::CommandBuffer command_buffer);
   void update_uniform_buffers();
+
+ protected:
+  void setup(VulkanExampleBase& app) override;
+  void destroy() override;
 
  private:
   static inline std::array<std::uint16_t, 6 * 6> _cube_indices = {
@@ -84,7 +86,6 @@ class light_cube {
 
   bool _wireframe_ = false;
   vk::SampleCountFlagBits _sample_count_;
-  VulkanExampleBase* _app_ = nullptr;
 
   void _setup_descriptor_set_layout();
   void _setup_descriptor_pool();

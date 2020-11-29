@@ -4,30 +4,28 @@ light_cube::light_cube(glm::mat4 projection, glm::mat4 model, glm::mat4 view) :
     _ubo_({projection, model, view}) {}
 
 void light_cube::setup(VulkanExampleBase& app) {
-  this->_app_ = &app;
-
   vks::Buffer staging_vertex_buffer;
   vks::Buffer staging_index_buffer;
-  _app_->vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eTransferSrc,
+  app.vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eTransferSrc,
                                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                     &staging_vertex_buffer,
                                     sizeof(_cube_vertices),
                                     _cube_vertices.data());
-  _app_->vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+  app.vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                     vk::MemoryPropertyFlagBits::eDeviceLocal,
                                     &_vertex_buffer_,
                                     sizeof(_cube_vertices));
-  _app_->vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eTransferSrc,
+  app.vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eTransferSrc,
                                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                     &staging_index_buffer,
                                     sizeof(_cube_indices),
                                     _cube_indices.data());
-  _app_->vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+  app.vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                     vk::MemoryPropertyFlagBits::eDeviceLocal,
                                     &_index_buffer_,
                                     sizeof(_cube_indices));
 
-  auto copy_cmd = _app_->vulkanDevice->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
+  auto copy_cmd = app.vulkanDevice->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
   vk::BufferCopy copy_region = {};
 
   copy_region.size = sizeof(_cube_vertices);
@@ -36,13 +34,13 @@ void light_cube::setup(VulkanExampleBase& app) {
   copy_region.size = sizeof(_cube_indices);
   copy_cmd->copyBuffer(*staging_index_buffer.buffer, *_index_buffer_.buffer, {copy_region});
 
-  _app_->vulkanDevice->flushCommandBuffer(copy_cmd, _app_->queue, true);
+  app.vulkanDevice->flushCommandBuffer(copy_cmd, app.queue, true);
 
   staging_vertex_buffer.destroy();
   staging_index_buffer.destroy();
 
   // Prepare uniform buffers
-  _ubo_.prepare(*_app_->vulkanDevice);
+  _ubo_.prepare(*app.vulkanDevice);
 
   _setup_descriptor_set_layout();
   prepare_pipeline();
@@ -68,7 +66,7 @@ void light_cube::draw(vk::CommandBuffer command_buffer) {
 }
 
 void light_cube::_setup_descriptor_set_layout() {
-  _ubo_.setup_descriptor_set_layout(_app_->device, vk::ShaderStageFlagBits::eVertex);
+  _ubo_.setup_descriptor_set_layout(app().device, vk::ShaderStageFlagBits::eVertex);
 
   vk::PushConstantRange push_constant_range;
   push_constant_range.stageFlags = vk::ShaderStageFlagBits::eFragment;
@@ -79,7 +77,7 @@ void light_cube::_setup_descriptor_set_layout() {
   auto pipeline_layout_create_info = vks::initializers::pipelineLayoutCreateInfo(set_layouts.data(), set_layouts.size());
   pipeline_layout_create_info.pushConstantRangeCount = 1;
   pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
-  _pipeline_layout_ = _app_->device.createPipelineLayoutUnique(pipeline_layout_create_info);
+  _pipeline_layout_ = app().device.createPipelineLayoutUnique(pipeline_layout_create_info);
 }
 
 void light_cube::prepare_pipeline() {
@@ -121,7 +119,7 @@ void light_cube::prepare_pipeline() {
   vk::PipelineVertexInputStateCreateInfo vertex_input_state_ci =
       vks::initializers::pipelineVertexInputStateCreateInfo(vertex_input_bindings, vertex_input_attributes);
 
-  auto pipeline_ci = vks::initializers::pipelineCreateInfo(*_pipeline_layout_, *_app_->renderPass, {});
+  auto pipeline_ci = vks::initializers::pipelineCreateInfo(*_pipeline_layout_, *app().renderPass, {});
   pipeline_ci.pVertexInputState = &vertex_input_state_ci;
   pipeline_ci.pInputAssemblyState = &input_assembly_state;
   pipeline_ci.pRasterizationState = &rasterization_state;
@@ -132,21 +130,21 @@ void light_cube::prepare_pipeline() {
   pipeline_ci.pDynamicState = &dynamic_state;
   pipeline_ci.stageCount = static_cast<uint32_t>(shader_stages.size());
   pipeline_ci.pStages = shader_stages.data();
-  shader_stages[0] = _app_->loadShader(_app_->getShadersPath() + "light_cube/light_cube.vert.spv", vk::ShaderStageFlagBits::eVertex);
-  shader_stages[1] = _app_->loadShader(_app_->getShadersPath() + "light_cube/light_cube.frag.spv", vk::ShaderStageFlagBits::eFragment);
-  _pipeline_ = _app_->device.createGraphicsPipelineUnique(*_app_->pipelineCache, pipeline_ci).value;
+  shader_stages[0] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.vert.spv", vk::ShaderStageFlagBits::eVertex);
+  shader_stages[1] = app().loadShader(app().getShadersPath() + "light_cube/light_cube.frag.spv", vk::ShaderStageFlagBits::eFragment);
+  _pipeline_ = app().device.createGraphicsPipelineUnique(*app().pipelineCache, pipeline_ci).value;
 }
 
 void light_cube::_setup_descriptor_pool() {
   auto pool_sizes = std::vector{
     vks::initializers::descriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1)
   };
-  auto descriptor_pool_info = vks::initializers::descriptorPoolCreateInfo(pool_sizes, _app_->swapChain.imageCount);
-  _descriptor_pool_ = _app_->device.createDescriptorPoolUnique(descriptor_pool_info);
+  auto descriptor_pool_info = vks::initializers::descriptorPoolCreateInfo(pool_sizes, app().swapChain.imageCount);
+  _descriptor_pool_ = app().device.createDescriptorPoolUnique(descriptor_pool_info);
 }
 
 void light_cube::_setup_descriptor_set() {
-  _ubo_.setup_descriptor_sets(_app_->device, *_descriptor_pool_);
+  _ubo_.setup_descriptor_sets(app().device, *_descriptor_pool_);
 }
 
 void light_cube::update_uniform_buffers() {

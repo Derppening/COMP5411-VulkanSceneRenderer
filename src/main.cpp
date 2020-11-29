@@ -23,7 +23,7 @@ vulkan_scene_renderer::vulkan_scene_renderer() : VulkanExampleBase(ENABLE_VALIDA
 vulkan_scene_renderer::~vulkan_scene_renderer() {
   _screenshot_.unbind();
 
-  _light_cube_.destroy();
+  _light_cube_.unbind();
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
@@ -625,7 +625,7 @@ void vulkan_scene_renderer::prepare() {
   VulkanExampleBase::prepare();
   load_assets();
   _query_pool_.bind(*this);
-  _light_cube_.setup(*this);
+  _light_cube_.bind(*this);
   prepare_uniform_buffers();
   setup_descriptors();
   prepare_pipelines();
