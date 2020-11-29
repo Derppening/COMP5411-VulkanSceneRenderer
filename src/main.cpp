@@ -26,7 +26,6 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   _light_cube_.unbind();
   _gs_pipeline_.unbind();
   _pipeline_layout_.reset();
-  descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
 
   _depth_ms_target_.unbind();
@@ -34,7 +33,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
 
   _light_ubo_.destroy();
   _settings_ubo_.destroy();
-  shader_data.buffer.destroy();
+  _matrices_ubo_.destroy();
   _query_pool_.unbind();
 }
 
@@ -84,7 +83,7 @@ void vulkan_scene_renderer::buildCommandBuffers() {
     _query_pool_.begin(*drawCmdBuffers[i]);
 
     // Bind scene matrices descriptor to set 0
-    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 0, {_descriptor_set_}, {});
+    drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 0, {_matrices_ubo_.descriptor_set()}, {});
     // Bind settings descriptor to set 2
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 2, {_settings_ubo_.descriptor_set()}, {});
     drawCmdBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_pipeline_layout_, 3, {_light_ubo_.descriptor_set()}, {});
@@ -345,20 +344,16 @@ void vulkan_scene_renderer::setup_descriptors() {
   descriptorPool = device.createDescriptorPoolUnique(descriptor_pool_info);
 
   // Descriptor set layout for passing matrices
-  std::vector<vk::DescriptorSetLayoutBinding> set_layout_bindings = {
-      vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, 0),
-  };
-  vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
-
-  descriptor_set_layouts.matrices = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
+  _matrices_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eFragment);
 
   // Descriptor set layout for passing material textures
-  set_layout_bindings = {
+  auto set_layout_bindings = std::vector{
       // Color map
       vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment, 0),
       // Normal map
       vks::initializers::descriptorSetLayoutBinding(vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment, 1),
   };
+  auto descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
   descriptor_set_layout_ci.pBindings = set_layout_bindings.data();
   descriptor_set_layout_ci.bindingCount = 2;
   descriptor_set_layouts.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
@@ -370,7 +365,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material, set 2 = settings)
   auto setLayouts = std::array{
-      *descriptor_set_layouts.matrices,
+      _matrices_ubo_.descriptor_set_layout(),
       *descriptor_set_layouts.textures,
       _settings_ubo_.descriptor_set_layout(),
       _light_ubo_.descriptor_set_layout()
@@ -384,11 +379,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   _pipeline_layout_ = device.createPipelineLayoutUnique(pipelineLayoutCI);
 
   // Descriptor set for scene matrices
-  vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.matrices, 1);
-  _descriptor_set_ = device.allocateDescriptorSets(allocInfo)[0];
-  vk::DescriptorBufferInfo shader_data_buffer_descriptor = shader_data.buffer.descriptor;
-  vk::WriteDescriptorSet writeDescriptorSet = vks::initializers::writeDescriptorSet(_descriptor_set_, vk::DescriptorType::eUniformBuffer, 0, &shader_data_buffer_descriptor);
-  device.updateDescriptorSets({writeDescriptorSet}, {});
+  _matrices_ubo_.setup_descriptor_sets(device, *descriptorPool);
 
   // Descriptor sets for materials
   for (auto& material : _gltf_scene_.materials) {
@@ -556,12 +547,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
 }
 
 void vulkan_scene_renderer::prepare_uniform_buffers() {
-  vulkanDevice->createBuffer(
-      vk::BufferUsageFlagBits::eUniformBuffer,
-      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-      &shader_data.buffer,
-      sizeof(shader_data.values));
-  shader_data.buffer.map();
+  _matrices_ubo_.prepare(*vulkanDevice, false);
 
   _settings_ubo_.prepare(*vulkanDevice, false);
 
@@ -573,10 +559,10 @@ void vulkan_scene_renderer::prepare_uniform_buffers() {
 }
 
 void vulkan_scene_renderer::update_uniform_buffers() {
-  shader_data.values.projection = camera.matrices.perspective;
-  shader_data.values.view = camera.matrices.view;
-  shader_data.values.viewPos = camera.viewPos;
-  memcpy(shader_data.buffer.mapped, &shader_data.values, sizeof(shader_data.values));
+  _matrices_ubo_.values().projection = camera.matrices.perspective;
+  _matrices_ubo_.values().view = camera.matrices.view;
+  _matrices_ubo_.values().viewPos = camera.viewPos;
+  _matrices_ubo_.update();
 
   _settings_ubo_.update();
 

@@ -39,22 +39,18 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   vulkan_gltf_scene _gltf_scene_;
 
-  struct shader_data {
-    vks::Buffer buffer;
-    struct values {
-      glm::mat4 projection;
-      glm::mat4 view;
-      glm::vec4 viewPos;
-    } values;
-  } shader_data;
-
   vk::UniquePipelineLayout _pipeline_layout_;
-  vk::DescriptorSet _descriptor_set_;
 
   struct descriptor_set_layouts {
-    vk::UniqueDescriptorSetLayout matrices;
     vk::UniqueDescriptorSetLayout textures;
   } descriptor_set_layouts;
+
+  struct alignas(4) _matrices {
+    glm::mat4 projection;
+    glm::mat4 view;
+    glm::vec4 viewPos;
+  };
+  ubo<_matrices> _matrices_ubo_;
 
   // Alignment required since boolean is just a int32_t
   struct alignas(4) _settings {
