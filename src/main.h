@@ -4,6 +4,7 @@
 
 #include "light_cube.h"
 #include "light_ubo.h"
+#include "normals_pipeline.h"
 #include "query_pool.h"
 #include "screenshot.h"
 #include "ubo.h"
@@ -88,11 +89,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     } _depth;
   } _multisample_target_;
 
-  struct {
-    float _length = 0.0f;
-
-    vk::UniquePipeline _pipeline;
-  } _gs_;
+  normals_pipeline _gs_pipeline_;
 
   struct {
     int _mode = 0;

@@ -3,6 +3,7 @@ add_executable(VulkanSceneRenderer
         application_bound.cpp
         light_cube.cpp
         light_ubo.cpp
+        normals_pipeline.cpp
         query_pool.cpp
         screenshot.cpp
         vulkan_gltf_scene.cpp)

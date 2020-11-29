@@ -8,8 +8,10 @@ class application_bound {
   void bind(VulkanExampleBase& app);
   void unbind();
 
+  bool bound() const noexcept { return _app_; }
+
  protected:
-  VulkanExampleBase& app();
+  VulkanExampleBase& app() const;
 
   virtual void setup(VulkanExampleBase& app) = 0;
   virtual void destroy() = 0;

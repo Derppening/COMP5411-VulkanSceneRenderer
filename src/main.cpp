@@ -24,6 +24,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   _screenshot_.unbind();
 
   _light_cube_.unbind();
+  _gs_pipeline_.unbind();
   pipeline_layout.reset();
   descriptor_set_layouts.matrices.reset();
   descriptor_set_layouts.textures.reset();
@@ -97,8 +98,8 @@ void vulkan_scene_renderer::buildCommandBuffers() {
       gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout);
 
     }
-    if (enabledFeatures.geometryShader && _gs_._length > 0.0f) {
-      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout, *_gs_._pipeline);
+    if (_gs_pipeline_.enabled()) {
+      gltf_scene.draw(*drawCmdBuffers[i], *pipeline_layout, _gs_pipeline_.pipeline());
     }
 
     if (_draw_light_) {
@@ -464,30 +465,9 @@ void vulkan_scene_renderer::prepare_pipelines() {
     pipelineCI.pTessellationState = &tessellation_state;
   }
 
-  if (enabledFeatures.geometryShader && _gs_._length > 0) {
-    shaderStages.resize(3);
-    pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
-    pipelineCI.pStages = shaderStages.data();
-
-    shaderStages[0] = loadShader(getShadersPath() + "normals/normals.vert.spv", vk::ShaderStageFlagBits::eVertex);
-    shaderStages[1] = loadShader(getShadersPath() + "normals/normals.frag.spv", vk::ShaderStageFlagBits::eFragment);
-    shaderStages[2] = loadShader(getShadersPath() + "normals/normals.geom.spv", vk::ShaderStageFlagBits::eGeometry);
-
-    std::vector<vk::SpecializationMapEntry> gs_specialization_map_entries = {
-        vks::initializers::specializationMapEntry(0, 0, sizeof(_gs_._length))
-    };
-    auto gs_specialization_info = vks::initializers::specializationInfo(gs_specialization_map_entries, sizeof(_gs_._length), &_gs_._length);
-    shaderStages[2].pSpecializationInfo = &gs_specialization_info;
-
-    std::vector<vk::SpecializationMapEntry> vs_specialization_map_entries = {
-        vks::initializers::specializationMapEntry(2, 0, sizeof(enabledFeatures.tessellationShader))
-    };
-    int b = true;
-    auto vs_specialization_info = vks::initializers::specializationInfo(gs_specialization_map_entries, sizeof(b), &b);
-    shaderStages[1].pSpecializationInfo = &vs_specialization_info;
-
-    _gs_._pipeline = device.createGraphicsPipelineUnique(*pipelineCache, {pipelineCI}).value;
-  }
+  _gs_pipeline_.unbind();
+  _gs_pipeline_.set_pipeline_layout(*pipeline_layout);
+  _gs_pipeline_.bind(*this);
 
   shaderStages.resize(2);
   pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
@@ -690,10 +670,10 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
     }
 
     if (enabledFeatures.geometryShader) {
-      if (overlay->inputFloat("Scene Normals Length", &_gs_._length, 1.0f, 0)) {
-        _gs_._length = std::max(_gs_._length, 0.0f);
+      if (overlay->inputFloat("Scene Normals Length", &_gs_pipeline_.length(), 1.0f, 0)) {
+        _gs_pipeline_.length() = std::max(_gs_pipeline_.length(), 0.0f);
 
-        prepare_pipelines();
+        _gs_pipeline_.create_pipeline();
         buildCommandBuffers();
       }
     }
@@ -718,10 +698,13 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       sample_count_labels.emplace_back(vk::to_string(sc));
     }
     if (overlay->comboBox("Multisampling", &_sample_count_option_, sample_count_labels)) {
-      _update_sample_count(vk::SampleCountFlagBits{1U << static_cast<std::uint32_t>(_sample_count_option_)});
+      _update_sample_count(vk::SampleCountFlagBits{1U << static_cast<std::uint32_t>(_sample_count_option_)}, false);
+      _gs_pipeline_.sample_count() = _sample_count_;
+      _update_sample_count(_sample_count_);
     }
     if (enabledFeatures.sampleRateShading) {
       if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
+        _gs_pipeline_.use_sample_shading() = _use_sample_shading_;
         prepare_pipelines();
         buildCommandBuffers();
       }
