@@ -8,6 +8,7 @@
 #include "normals_pipeline.h"
 #include "query_pool.h"
 #include "screenshot.h"
+#include "tessellation.h"
 #include "ubo.h"
 #include "vulkan_gltf_scene.h"
 #include <vulkanexamplebase.h>
@@ -83,16 +84,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   normals_pipeline _gs_pipeline_;
 
-  struct {
-    int _mode = 0;
-    float _level = 3.0f;
-    float _alpha = 1.0f;
-
-    vk::ShaderModule _passthrough_module_tesc;
-    vk::ShaderModule _passthrough_module_tese;
-    vk::ShaderModule _pn_module_tesc;
-    vk::ShaderModule _pn_module_tese;
-  } _ts_;
+  tessellation _ts_;
 
   screenshot _screenshot_;
 };
