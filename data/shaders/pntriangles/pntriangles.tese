@@ -69,6 +69,7 @@ void main() {
     vec3 pnNormal  = iNormal[0] * uvwSquared[2] + iNormal[1] * uvwSquared[0] + iNormal[2] * uvwSquared[1]
                    + n110 * uvw[2] * uvw[0] + n011 * uvw[0] * uvw[1]+ n101 * uvw[2] * uvw[1];
     oNormal = tessAlpha*pnNormal + (1.0-tessAlpha) * barNormal;
+    oNormal = mat3(primitive.model) * oNormal;
 
     // compute interpolated pos
     vec3 barPos = gl_TessCoord[2] * gl_in[0].gl_Position.xyz

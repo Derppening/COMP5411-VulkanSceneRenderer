@@ -37,6 +37,7 @@ void main(void)
 	gl_Position = ubo.projection * ubo.view * fragPos;
 
 	oNormal = gl_TessCoord.x*iNormal[0] + gl_TessCoord.y*iNormal[1] + gl_TessCoord.z*iNormal[2];
+	oNormal = mat3(primitive.model) * oNormal;
 	oTexCoord = gl_TessCoord.x*iTexCoord[0] + gl_TessCoord.y*iTexCoord[1] + gl_TessCoord.z*iTexCoord[2];
 	oColor = gl_TessCoord.x * iColor[0] + gl_TessCoord.y * iColor[1] + gl_TessCoord.z * iColor[2];
 	oViewVec = ubo.viewPos.xyz - oFragPos;
