@@ -53,7 +53,7 @@ void vulkan_scene_renderer::buildCommandBuffers() {
   auto clear_color_value = vk::ClearColorValue(std::array{_clear_color_, _clear_color_, _clear_color_, 1.0f});
   std::vector<vk::ClearValue> clear_values;
   clear_values.emplace_back(clear_color_value);
-  if (_sample_count_ != vk::SampleCountFlagBits::e1) {
+  if (_current_sample_count() != vk::SampleCountFlagBits::e1) {
     clear_values.emplace_back(clear_color_value);
   }
   clear_values.emplace_back(vk::ClearDepthStencilValue{1.0f, 0});
@@ -112,14 +112,14 @@ void vulkan_scene_renderer::buildCommandBuffers() {
 }
 
 void vulkan_scene_renderer::setupRenderPass() {
-  if (_sample_count_ == vk::SampleCountFlagBits::e1) {
+  if (_current_sample_count() == vk::SampleCountFlagBits::e1) {
     VulkanExampleBase::setupRenderPass();
   } else {
     std::array<vk::AttachmentDescription, 3> attachments = {};
 
     // Multisampled attachment that we render to
     attachments[0].format = swapChain.colorFormat;
-    attachments[0].samples = _sample_count_;
+    attachments[0].samples = _current_sample_count();
     attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp = vk::AttachmentStoreOp::eDontCare;
     attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -139,7 +139,7 @@ void vulkan_scene_renderer::setupRenderPass() {
 
     // Multisampled depth attachment
     attachments[2].format = depthFormat;
-    attachments[2].samples = _sample_count_;
+    attachments[2].samples = _current_sample_count();
     attachments[2].loadOp = vk::AttachmentLoadOp::eClear;
     attachments[2].storeOp = vk::AttachmentStoreOp::eDontCare;
     attachments[2].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -201,7 +201,7 @@ void vulkan_scene_renderer::setupRenderPass() {
 }
 
 void vulkan_scene_renderer::setupFrameBuffer() {
-  if (_sample_count_ == vk::SampleCountFlagBits::e1) {
+  if (_current_sample_count() == vk::SampleCountFlagBits::e1) {
     VulkanExampleBase::setupFrameBuffer();
   } else {
     std::array<vk::ImageView, 3> attachments = {};
@@ -405,8 +405,8 @@ void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineDepthStencilStateCreateInfo depthStencilStateCI = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, vk::CompareOp::eLessOrEqual);
   vk::PipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
 
-  vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_sample_count_, {});
-  if (enabledFeatures.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
+  vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_current_sample_count(), {});
+  if (enabledFeatures.sampleRateShading && _current_sample_count() != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
     multisampleStateCI.sampleShadingEnable = true;
     multisampleStateCI.minSampleShading = 0.25f;
   }
@@ -547,7 +547,7 @@ void vulkan_scene_renderer::update_uniform_buffers() {
 
 void vulkan_scene_renderer::prepare() {
   _get_max_usable_sample_count();
-  _update_sample_count(_sample_count_, false);
+  _update_sample_count(_current_sample_count(), false);
   VulkanExampleBase::prepare();
   load_assets();
   _query_pool_.bind(*this);
@@ -643,18 +643,11 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       _settings_ubo_.update();
     }
 
-    std::vector<std::string> sample_count_labels;
-    sample_count_labels.reserve(_supported_sample_counts_.size());
-    for (const auto& sc : _supported_sample_counts_) {
-      sample_count_labels.emplace_back(vk::to_string(sc));
-    }
-    if (overlay->comboBox("Multisampling", &_sample_count_option_, sample_count_labels)) {
-      _update_sample_count(vk::SampleCountFlagBits{1U << static_cast<std::uint32_t>(_sample_count_option_)}, false);
-      _gs_pipeline_.sample_count() = _sample_count_;
-      _update_sample_count(_sample_count_);
+    if (overlay->comboBox("Multisampling", &_sample_count_option_, _sample_count_labels_)) {
+      _update_sample_count(_current_sample_count());
     }
     if (enabledFeatures.sampleRateShading) {
-      if (_sample_count_ != vk::SampleCountFlagBits::e1) {
+      if (_current_sample_count() != vk::SampleCountFlagBits::e1) {
         if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
           _gs_pipeline_.use_sample_shading() = _use_sample_shading_;
           prepare_pipelines();
@@ -799,16 +792,25 @@ vk::SampleCountFlagBits vulkan_scene_renderer::_get_max_usable_sample_count() {
     if (counts & vk::SampleCountFlagBits::e16) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e16); }
     if (counts & vk::SampleCountFlagBits::e32) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e32); }
     if (counts & vk::SampleCountFlagBits::e64) { _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e64); }
+
+    _sample_count_labels_.reserve(_supported_sample_counts_.size());
+    for (const auto& sc : _supported_sample_counts_) {
+      _sample_count_labels_.emplace_back(vk::to_string(sc));
+    }
   }
   return *std::max_element(_supported_sample_counts_.begin(), _supported_sample_counts_.end());
+}
+
+vk::SampleCountFlagBits vulkan_scene_renderer::_current_sample_count() const {
+  return _supported_sample_counts_[static_cast<std::size_t>(_sample_count_option_)];
 }
 
 void vulkan_scene_renderer::_setup_multisample_target() {
   _depth_ms_target_.unbind();
   _color_ms_target_.unbind();
 
-  _color_ms_target_.sample_count() = _sample_count_;
-  _depth_ms_target_.sample_count() = _sample_count_;
+  _color_ms_target_.sample_count() = _current_sample_count();
+  _depth_ms_target_.sample_count() = _current_sample_count();
 
   _color_ms_target_.bind(*this);
   _depth_ms_target_.bind(*this);
@@ -826,9 +828,9 @@ glm::vec3 vulkan_scene_renderer::_calc_camera_direction() {
 }
 
 void vulkan_scene_renderer::_update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now) {
-  _sample_count_ = sample_count;
   UIOverlay.rasterizationSamples = sample_count;
   _light_cube_.sample_count() = sample_count;
+  _gs_pipeline_.sample_count() = sample_count;
 
   if (update_now) {
     setupRenderPass();

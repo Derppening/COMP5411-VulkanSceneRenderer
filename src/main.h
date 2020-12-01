@@ -34,6 +34,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
  private:
   vk::SampleCountFlagBits _get_max_usable_sample_count();
+  vk::SampleCountFlagBits _current_sample_count() const;
   void _setup_multisample_target();
   glm::vec3 _calc_camera_direction();
   void _update_sample_count(vk::SampleCountFlagBits sample_count, bool update_now = true);
@@ -78,7 +79,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   bool _use_sample_shading_ = false;
   std::vector<vk::SampleCountFlagBits> _supported_sample_counts_;
-  vk::SampleCountFlagBits _sample_count_ = vk::SampleCountFlagBits::e1;
+  std::vector<std::string> _sample_count_labels_;
   int _sample_count_option_ = 0;
 
   image_multisample_target _color_ms_target_;
