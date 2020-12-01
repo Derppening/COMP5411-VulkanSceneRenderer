@@ -1,6 +1,6 @@
 #version 450 core
 
-layout (set = 0, binding = 0) uniform UBOScene {
+layout (set = 0, binding = 0, std140) uniform UBOScene {
 	mat4 projection;
 	mat4 view;
 	vec4 viewPos;

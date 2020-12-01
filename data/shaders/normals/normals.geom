@@ -3,7 +3,7 @@
 layout(triangles) in;
 layout(line_strip, max_vertices = 6) out;
 
-layout (set = 0, binding = 0) uniform UBOScene {
+layout (set = 0, binding = 0, std140) uniform UBOScene {
     mat4 projection;
     mat4 view;
     vec4 viewPos;

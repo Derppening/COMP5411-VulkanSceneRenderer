@@ -2,22 +2,22 @@
 
 layout (set = 1, binding = 0) uniform sampler2D samplerColorMap;
 layout (set = 1, binding = 1) uniform sampler2D samplerNormalMap;
-layout (set = 2, binding = 0) uniform Settings {
+layout (set = 2, binding = 0, std140) uniform Settings {
 	bool useBlinnPhong;
 } settings;
-layout(set = 3, binding = 0) uniform LightSettings {
+layout(set = 3, binding = 0, std140) uniform LightSettings {
 	float dirIntensity;
 	float pointIntensity;
 	float spotIntensity;
 } lightSettings;
-layout(set = 3, binding = 1) uniform DirLight {
+layout(set = 3, binding = 1, std140) uniform DirLight {
 	vec3 direction;
 
 	float ambient;
 	float diffuse;
 	float specular;
 } dirLight;
-layout(set = 3, binding = 2) uniform PointLight {
+layout(set = 3, binding = 2, std140) uniform PointLight {
 	vec3 position;
 
 	float constant;
@@ -28,7 +28,7 @@ layout(set = 3, binding = 2) uniform PointLight {
 	float diffuse;
 	float specular;
 } pointLight;
-layout(set = 3, binding = 3) uniform SpotLight {
+layout(set = 3, binding = 3, std140) uniform SpotLight {
 	vec3 position;
 	vec3 direction;
 	float cutOff;
