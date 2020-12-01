@@ -67,7 +67,6 @@
 
 #include "VulkanInitializers.hpp"
 #include "camera.hpp"
-#include "benchmark.hpp"
 
 class VulkanExampleBase
 {
@@ -160,8 +159,6 @@ public:
 
 	/** @brief Last frame time measured using a high performance timer (if available) */
 	float frameTimer = 1.0f;
-
-	vks::Benchmark benchmark;
 
 	/** @brief Encapsulated physical and logical vulkan device */
 	std::unique_ptr<vks::VulkanDevice> vulkanDevice;
