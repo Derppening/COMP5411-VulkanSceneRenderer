@@ -40,7 +40,7 @@ class vulkan_gltf_scene {
   struct node {
     node* parent;
     std::vector<node> children;
-    mesh mesh;
+    vulkan_gltf_scene::mesh mesh;
     glm::mat4 matrix;
     std::string name;
     bool visible = true;

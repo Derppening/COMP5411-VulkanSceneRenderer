@@ -52,10 +52,10 @@ class light_ubo {
   };
 
   struct values {
-    settings settings;
-    dir_light dir_light = light_ubo::default_dir_light;
-    point_light point_light = light_ubo::default_point_light;
-    spot_light spot_light = light_ubo::default_spot_light;
+    light_ubo::settings settings;
+    light_ubo::dir_light dir_light = light_ubo::default_dir_light;
+    light_ubo::point_light point_light = light_ubo::default_point_light;
+    light_ubo::spot_light spot_light = light_ubo::default_spot_light;
   };
 
   light_ubo() = default;
