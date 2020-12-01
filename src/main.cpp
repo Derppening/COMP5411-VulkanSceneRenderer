@@ -405,7 +405,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
 
   vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_sample_count_, {});
-  if (vulkanDevice->enabledFeatures.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
+  if (enabledFeatures.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
     multisampleStateCI.sampleShadingEnable = true;
     multisampleStateCI.minSampleShading = 0.25f;
   }
@@ -649,10 +649,12 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       _update_sample_count(_sample_count_);
     }
     if (enabledFeatures.sampleRateShading) {
-      if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
-        _gs_pipeline_.use_sample_shading() = _use_sample_shading_;
-        prepare_pipelines();
-        buildCommandBuffers();
+      if (_sample_count_ != vk::SampleCountFlagBits::e1) {
+        if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
+          _gs_pipeline_.use_sample_shading() = _use_sample_shading_;
+          prepare_pipelines();
+          buildCommandBuffers();
+        }
       }
     } else {
       overlay->text("Sample-Rate Shading not supported.");
