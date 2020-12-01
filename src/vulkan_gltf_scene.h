@@ -82,8 +82,9 @@ class vulkan_gltf_scene {
                  vulkan_gltf_scene::node* parent,
                  std::vector<std::uint32_t>& index_buffer,
                  std::vector<vulkan_gltf_scene::vertex>& vertex_buffer);
-  void draw_node(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout, const vulkan_gltf_scene::node& node);
-  void draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout);
-  void draw_node(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout, vk::Pipeline pipeline, const vulkan_gltf_scene::node& node);
-  void draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout, vk::Pipeline pipeline);
+  void draw_node(vk::CommandBuffer command_buffer,
+                 vk::PipelineLayout pipeline_layout,
+                 const vulkan_gltf_scene::node& node,
+                 vk::Pipeline pipeline = {});
+  void draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout, vk::Pipeline pipeline = {});
 };

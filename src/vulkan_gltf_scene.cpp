@@ -224,7 +224,8 @@ vk::DescriptorImageInfo vulkan_gltf_scene::get_texture_descriptor(std::size_t in
 
 void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
                                   vk::PipelineLayout pipeline_layout,
-                                  const vulkan_gltf_scene::node& node) {
+                                  const vulkan_gltf_scene::node& node,
+                                  vk::Pipeline pipeline) {
   if (!node.visible) {
     return;
   }
@@ -242,50 +243,10 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
     for (const vulkan_gltf_scene::primitive& primitive : node.mesh.primitives) {
       if (primitive.index_count > 0) {
         vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
-        // POI: Bind the pipeline for the node's material
-        command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *material.pipeline);
-        command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 1, {material.descriptor_set}, {});
-        vkCmdDrawIndexed(command_buffer, primitive.index_count, 1, primitive.first_index, 0, 0);
-      }
-    }
-  }
-  for (auto& child : node.children) {
-    draw_node(command_buffer, pipeline_layout, child);
-  }
-}
+        if (!pipeline) {
+          pipeline = *material.pipeline;
+        }
 
-void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer, vk::PipelineLayout pipeline_layout) {
-  // All vertices and indices are stored in single buffers, so we only need to bind once
-  auto offsets = std::array<vk::DeviceSize, 1>{{0}};
-  command_buffer.bindVertexBuffers(0, {*vertices.buffer}, offsets);
-  command_buffer.bindIndexBuffer(*indices.buffer.buffer, 0, vk::IndexType::eUint32);
-  // Render all nodes at top-level
-  for (auto& node : nodes) {
-    draw_node(command_buffer, pipeline_layout, node);
-  }
-}
-
-void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
-                                  vk::PipelineLayout pipeline_layout,
-                                  vk::Pipeline pipeline,
-                                  const vulkan_gltf_scene::node& node) {
-  if (!node.visible) {
-    return;
-  }
-  if (!node.mesh.primitives.empty()) {
-    // Pass the node's matrix via push constants
-    // Traverse the node hierarchy to the top-most parent to get the final matrix of the current node
-    glm::mat4 node_matrix = node.matrix;
-    vulkan_gltf_scene::node* current_parent = node.parent;
-    while (current_parent) {
-      node_matrix = current_parent->matrix * node_matrix;
-      current_parent = current_parent->parent;
-    }
-    // Pass the final matrix to the vertex shader using push constants
-    command_buffer.pushConstants<glm::mat4>(pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eGeometry | vk::ShaderStageFlagBits::eTessellationEvaluation, 0, {node_matrix});
-    for (const vulkan_gltf_scene::primitive& primitive : node.mesh.primitives) {
-      if (primitive.index_count > 0) {
-        vulkan_gltf_scene::material& material = materials[static_cast<std::size_t>(primitive.material_index)];
         // POI: Bind the pipeline for the node's material
         command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
         command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 1, {material.descriptor_set}, {});
@@ -294,7 +255,7 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
     }
   }
   for (auto& child : node.children) {
-    draw_node(command_buffer, pipeline_layout, child);
+    draw_node(command_buffer, pipeline_layout, child, pipeline);
   }
 }
 
@@ -307,6 +268,6 @@ void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer,
   command_buffer.bindIndexBuffer(*indices.buffer.buffer, 0, vk::IndexType::eUint32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
-    draw_node(command_buffer, pipeline_layout, pipeline, node);
+    draw_node(command_buffer, pipeline_layout, node, pipeline);
   }
 }
