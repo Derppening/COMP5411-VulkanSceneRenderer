@@ -85,7 +85,7 @@ class light_cube : public application_bound {
  };
 
   bool _wireframe_ = false;
-  vk::SampleCountFlagBits _sample_count_;
+  vk::SampleCountFlagBits _sample_count_ = vk::SampleCountFlagBits::e1;
 
   void _setup_descriptor_set_layout();
   void _setup_descriptor_pool();

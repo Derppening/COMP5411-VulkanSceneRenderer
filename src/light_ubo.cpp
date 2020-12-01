@@ -81,8 +81,10 @@ void light_ubo::setup_descriptor_sets(vk::Device device, vk::DescriptorPool desc
 
   std::vector<vk::WriteDescriptorSet> write_descriptor_sets{4};
   for (std::size_t i = 0; i < write_descriptor_sets.size(); ++i) {
-    write_descriptor_sets[i] =
-        vks::initializers::writeDescriptorSet(_descriptor_set_, vk::DescriptorType::eUniformBuffer, i, &descriptors[i]);
+    write_descriptor_sets[i] = vks::initializers::writeDescriptorSet(_descriptor_set_,
+                                                                     vk::DescriptorType::eUniformBuffer,
+                                                                     static_cast<std::uint32_t>(i),
+                                                                     &descriptors[i]);
   }
 
   device.updateDescriptorSets(write_descriptor_sets, {});

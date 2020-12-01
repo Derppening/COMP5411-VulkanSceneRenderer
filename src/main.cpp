@@ -64,7 +64,7 @@ void vulkan_scene_renderer::buildCommandBuffers() {
   renderPassBeginInfo.renderArea.offset.y = 0;
   renderPassBeginInfo.renderArea.extent.width = width;
   renderPassBeginInfo.renderArea.extent.height = height;
-  renderPassBeginInfo.clearValueCount = clear_values.size();
+  renderPassBeginInfo.clearValueCount = static_cast<std::uint32_t>(clear_values.size());
   renderPassBeginInfo.pClearValues = clear_values.data();
 
   const vk::Viewport viewport = vks::initializers::viewport(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f);
