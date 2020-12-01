@@ -61,6 +61,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   ubo<_settings> _settings_ubo_;
   light_ubo _light_ubo_;
 
+  float _clear_color_ = 0.25f;
+
   bool _draw_light_ = false;
   bool _draw_scene_ = true;
 

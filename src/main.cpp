@@ -50,10 +50,11 @@ void vulkan_scene_renderer::getEnabledFeatures() {
 void vulkan_scene_renderer::buildCommandBuffers() {
   vk::CommandBufferBeginInfo cmd_buf_info = vks::initializers::commandBufferBeginInfo();
 
+  auto clear_color_value = vk::ClearColorValue(std::array{_clear_color_, _clear_color_, _clear_color_, 1.0f});
   std::vector<vk::ClearValue> clear_values;
-  clear_values.emplace_back(std::array{0.25f, 0.25f, 0.25f, 1.0f });
+  clear_values.emplace_back(clear_color_value);
   if (_sample_count_ != vk::SampleCountFlagBits::e1) {
-    clear_values.emplace_back(std::array{0.25f, 0.25f, 0.25f, 1.0f});
+    clear_values.emplace_back(clear_color_value);
   }
   clear_values.emplace_back(vk::ClearDepthStencilValue{1.0f, 0});
 
@@ -612,6 +613,10 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
     }
 
     if (overlay->checkBox("Draw Scene", &_draw_scene_)) {
+      buildCommandBuffers();
+    }
+
+    if (overlay->sliderFloat("Background Color", &_clear_color_, 0.0f, 1.0f)) {
       buildCommandBuffers();
     }
 
