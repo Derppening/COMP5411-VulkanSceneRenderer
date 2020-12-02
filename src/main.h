@@ -31,6 +31,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void render() override;
   void draw();
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
+  void windowResized() override;
 
  private:
   vk::SampleCountFlagBits _get_max_usable_sample_count();

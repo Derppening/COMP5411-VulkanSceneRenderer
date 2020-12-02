@@ -785,6 +785,11 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
   }
 }
 
+void vulkan_scene_renderer::windowResized() {
+  _matrices_ubo_.values().projection = camera.matrices.perspective;
+  _matrices_ubo_.update();
+}
+
 vk::SampleCountFlagBits vulkan_scene_renderer::_get_max_usable_sample_count() {
   auto counts = std::min(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
 
