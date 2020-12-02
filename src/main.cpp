@@ -584,12 +584,16 @@ void vulkan_scene_renderer::draw() {
 }
 
 void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
-  if (overlay->header("Camera")) {
-    std::string caption = fmt::format("Position: {:.3f}, {:.3f}, {:.3f}", camera.viewPos.x, camera.viewPos.y, camera.viewPos.z);
+  if (overlay->header("General Info")) {
+    std::string caption;
+    caption = fmt::format("Resolution: ({}, {})", width, height);
+    overlay->text(caption.c_str());
+
+    caption = fmt::format("Camera Pos.: {:.3f}, {:.3f}, {:.3f}", camera.viewPos.x, camera.viewPos.y, camera.viewPos.z);
     overlay->text(caption.c_str());
 
     const auto dir = _calc_camera_direction();
-    caption = fmt::format("Direction: {:.3f}, {:.3f}, {:.3f}", dir.x, dir.y, dir.z);
+    caption = fmt::format("Camera Dir.: {:.3f}, {:.3f}, {:.3f}", dir.x, dir.y, dir.z);
     overlay->text(caption.c_str());
   }
 
