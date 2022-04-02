@@ -379,28 +379,27 @@ VulkanExampleBase::VulkanExampleBase(bool enableValidation)
 
 	settings.validation = enableValidation;
 
-	char* numConvPtr;
-
-	// Parse command line arguments
-	for (size_t i = 0; i < args.size(); i++)
-	{
-		if (args[i] == std::string("-validation")) {
-			settings.validation = true;
-		}
-		if (args[i] == std::string("-vsync")) {
-			settings.vsync = true;
-		}
-		if ((args[i] == std::string("-f")) || (args[i] == std::string("--fullscreen"))) {
-			settings.fullscreen = true;
-		}
-		if ((args[i] == std::string("-w")) || (args[i] == std::string("--width"))) {
-			uint32_t w = strtol(args[i + 1], &numConvPtr, 10);
-			if (numConvPtr != args[i + 1]) { width = w; };
-		}
-		if ((args[i] == std::string("-h")) || (args[i] == std::string("--height"))) {
-			uint32_t h = strtol(args[i + 1], &numConvPtr, 10);
-			if (numConvPtr != args[i + 1]) { height = h; };
-		}
+	// Command line arguments
+	commandLineParser.parse(args);
+	if (commandLineParser.isSet("help")) {
+		commandLineParser.printHelp();
+		std::cin.get();
+		std::exit(0);
+	}
+	if (commandLineParser.isSet("validation")) {
+		settings.validation = true;
+	}
+	if (commandLineParser.isSet("vsync")) {
+		settings.vsync = true;
+	}
+	if (commandLineParser.isSet("height")) {
+		height = commandLineParser.getValueAsInt("height", width);
+	}
+	if (commandLineParser.isSet("width")) {
+		width = commandLineParser.getValueAsInt("width", width);
+	}
+	if (commandLineParser.isSet("fullscreen")) {
+		settings.fullscreen = true;
 	}
 }
 
@@ -479,54 +478,33 @@ bool VulkanExampleBase::initVulkan()
         return false;
 	}
 
+    if (gpuCount == 0) {
+		vks::tools::exitFatal("No device with Vulkan support found", -1);
+		return false;
+	}
+
 	// GPU selection
 
 	// Select physical device to be used for the Vulkan example
 	// Defaults to the first device unless specified by command line
-	uint32_t selectedDevice = 0;
+	std::uint32_t selectedDevice = 0;
 
 	// GPU selection via command line argument
-	for (size_t i = 0; i < args.size(); i++)
-	{
-		// Select GPU
-		if ((args[i] == std::string("-g")) || (args[i] == std::string("-gpu")))
-		{
-			char* endptr;
-			uint32_t index = strtol(args[i + 1], &endptr, 10);
-			if (endptr != args[i + 1])
-			{
-				if (index > gpuCount - 1)
-				{
-					std::cerr << "Selected device index " << index << " is out of range, reverting to device 0 (use -listgpus to show available Vulkan devices)" << "\n";
-				}
-				else
-				{
-					std::cout << "Selected Vulkan device " << index << "\n";
-					selectedDevice = index;
-				}
-			};
-			break;
+	if (commandLineParser.isSet("gpuselection")) {
+		std::uint32_t index = commandLineParser.getValueAsInt("gpuselection", 0);
+		if (index > gpuCount - 1) {
+			std::cerr << "Selected device index " << index << " is out of range, reverting to device 0 (use -listgpus to show available Vulkan devices)" << "\n";
+		} else {
+			selectedDevice = index;
 		}
-		// List available GPUs
-		if (args[i] == std::string("-listgpus"))
-        {
-            uint32_t gpuCount = instance->enumeratePhysicalDevices().size();
-			if (gpuCount == 0)
-			{
-				std::cerr << "No Vulkan devices found!" << "\n";
-			}
-			else
-			{
-				// Enumerate devices
-				std::cout << "Available Vulkan devices" << "\n";
-				std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
-				for (uint32_t j = 0; j < gpuCount; j++) {
-					vk::PhysicalDeviceProperties deviceProperties = devices[j].getProperties();
-					std::cout << "Device [" << j << "] : " << deviceProperties.deviceName << std::endl;
-					std::cout << " Type: " << vks::tools::physicalDeviceTypeString(deviceProperties.deviceType) << "\n";
-					std::cout << " API: " << (deviceProperties.apiVersion >> 22) << "." << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.apiVersion & 0xfff) << "\n";
-				}
-			}
+	}
+	if (commandLineParser.isSet("gpulist")) {
+		std::cout << "Available Vulkan devices" << "\n";
+		for (std::uint32_t i = 0; i < gpuCount; i++) {
+            vk::PhysicalDeviceProperties deviceProperties = physicalDevices[i].getProperties();
+			std::cout << "Device [" << i << "] : " << deviceProperties.deviceName << std::endl;
+			std::cout << " Type: " << vks::tools::physicalDeviceTypeString(deviceProperties.deviceType) << "\n";
+			std::cout << " API: " << (deviceProperties.apiVersion >> 22) << "." << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.apiVersion & 0xfff) << "\n";
 		}
 	}
 
@@ -928,3 +906,97 @@ void VulkanExampleBase::setupSwapChain()
 }
 
 void VulkanExampleBase::OnUpdateUIOverlay(vks::UIOverlay *overlay) {}
+
+// Command line argument parser class
+
+CommandLineParser::CommandLineParser()
+{
+	add("help", { "--help" }, 0, "Show help");
+	add("validation", {"-v", "--validation"}, 0, "Enable validation layers");
+	add("vsync", {"-vs", "--vsync"}, 0, "Enable V-Sync");
+	add("fullscreen", { "-f", "--fullscreen" }, 0, "Start in fullscreen mode");
+	add("width", { "-w", "--width" }, 1, "Set window width");
+	add("height", { "-h", "--height" }, 1, "Set window height");
+	add("gpuselection", { "-g", "--gpu" }, 1, "Select GPU to run on");
+	add("gpulist", { "-gl", "--listgpus" }, 0, "Display a list of available Vulkan devices");
+}
+
+void CommandLineParser::add(const std::string& name, const std::vector<std::string>& commands, bool hasValue, const std::string& help)
+{
+	options[name].commands = commands;
+	options[name].help = help;
+	options[name].set = false;
+	options[name].hasValue = hasValue;
+	options[name].value = "";
+}
+
+void CommandLineParser::printHelp()
+{
+	std::cout << "Available command line options:\n";
+	for (auto option : options) {
+		std::cout << " ";
+		for (std::size_t i = 0; i < option.second.commands.size(); i++) {
+			std::cout << option.second.commands[i];
+			if (i < option.second.commands.size() - 1) {
+				std::cout << ", ";
+			}
+		}
+		std::cout << ": " << option.second.help << "\n";
+	}
+	std::cout << "Press any key to close...";
+}
+
+void CommandLineParser::parse(const std::vector<const char*>& arguments)
+{
+	bool printHelp = false;
+	// Known arguments
+	for (auto& option : options) {
+		for (const auto& command : option.second.commands) {
+			for (std::size_t i = 0; i < arguments.size(); i++) {
+				if (std::strcmp(arguments[i], command.c_str()) == 0) {
+					option.second.set = true;
+					// Get value
+					if (option.second.hasValue) {
+						if (arguments.size() > i + 1) {
+							option.second.value = arguments[i + 1];
+						}
+						if (option.second.value == "") {
+							printHelp = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	// Print help for unknown arguments or missing argument values
+	if (printHelp) {
+		options["help"].set = true;
+	}
+}
+
+bool CommandLineParser::isSet(const std::string& name)
+{
+	return ((options.find(name) != options.end()) && options[name].set);
+}
+
+std::string CommandLineParser::getValueAsString(const std::string& name, const std::string& defaultValue)
+{
+	assert(options.find(name) != options.end());
+	std::string value = options[name].value;
+	return (value != "") ? value : defaultValue;
+}
+
+std::int32_t CommandLineParser::getValueAsInt(const std::string& name, std::int32_t defaultValue)
+{
+	assert(options.find(name) != options.end());
+	std::string value = options[name].value;
+	if (value != "") {
+		char* numConvPtr;
+		std::int32_t intVal = std::strtol(value.c_str(), &numConvPtr, 10);
+		return (intVal > 0) ? intVal : defaultValue;
+	} else {
+		return defaultValue;
+	}
+	return std::int32_t();
+}

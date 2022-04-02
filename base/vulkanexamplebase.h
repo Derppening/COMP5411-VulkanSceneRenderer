@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <vector>
 #include <array>
+#include <unordered_map>
 #include <numeric>
 #include <ctime>
 #include <iostream>
@@ -49,6 +50,26 @@
 
 #include "VulkanInitializers.hpp"
 #include "camera.hpp"
+
+class CommandLineParser
+{
+public:
+	struct CommandLineOption {
+		std::vector<std::string> commands;
+		std::string value;
+		bool hasValue = false;
+		std::string help;
+		bool set = false;
+	};
+	std::unordered_map<std::string, CommandLineOption> options;
+	CommandLineParser();
+	void add(const std::string& name, const std::vector<std::string>& commands, bool hasValue, const std::string& help);
+	void printHelp();
+	void parse(const std::vector<const char*>& arguments);
+	bool isSet(const std::string& name);
+	std::string getValueAsString(const std::string& name, const std::string& defaultValue);
+	std::int32_t getValueAsInt(const std::string& name, std::int32_t defaultValue);
+};
 
 class VulkanExampleBase
 {
@@ -138,6 +159,7 @@ public:
 	uint32_t height = 720;
 
 	vks::UIOverlay UIOverlay;
+    CommandLineParser commandLineParser;
 
 	/** @brief Last frame time measured using a high performance timer (if available) */
 	float frameTimer = 1.0f;
