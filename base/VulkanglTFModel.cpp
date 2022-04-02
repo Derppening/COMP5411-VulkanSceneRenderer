@@ -1037,7 +1037,7 @@ void vkglTF::Model::loadAnimations(tinygltf::Model &gltfModel)
 				for (size_t index = 0; index < accessor.count; index++) {
 					sampler.inputs.push_back(buf[index]);
 				}
-
+                delete[] buf;
 				for (auto input : sampler.inputs) {
 					if (input < animation.start) {
 						animation.start = input;
