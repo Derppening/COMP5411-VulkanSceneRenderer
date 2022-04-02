@@ -469,6 +469,9 @@ vkglTF::Mesh::Mesh(vks::VulkanDevice *device, glm::mat4 matrix) {
 vkglTF::Mesh::~Mesh() {
 	uniformBuffer.buffer.reset();
 	uniformBuffer.memory.reset();
+    for (auto primitive : primitives) {
+        delete primitive;
+    }
 }
 
 /*
@@ -704,6 +707,9 @@ vkglTF::Model::~Model()
 	for (auto node : nodes) {
 		delete node;
 	}
+    for (auto skin : skins) {
+        delete skin;
+    }
     descriptorSetLayoutUbo.reset();
 	descriptorSetLayoutImage.reset();
 	descriptorPool.reset();
