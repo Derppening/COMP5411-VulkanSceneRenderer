@@ -39,7 +39,9 @@ namespace vks
 		io.FontGlobalScale = scale;
 	}
 
-	UIOverlay::~UIOverlay()	{ }
+	UIOverlay::~UIOverlay()	{
+        ImGui::DestroyContext();
+    }
 
 	/** Prepare all vulkan resources required to render the UI overlay */
 	void UIOverlay::prepareResources()
