@@ -3,7 +3,7 @@
 * 
 * A swap chain is a collection of framebuffers used for rendering and presentation to the windowing system
 *
-* Copyright (C) 2016-2017 by Sascha Willems - www.saschawillems.de
+* Copyright (C) 2016-2021 by Sascha Willems - www.saschawillems.de
 *
 * This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
 */
@@ -153,7 +153,8 @@ void VulkanSwapChain::connect(vk::Instance instance, vk::PhysicalDevice physical
 */
 void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 {
-	vk::SwapchainKHR oldSwapchain = *swapChain;
+    // Store the current swap chain handle so we can use it later on to ease up recreation
+    vk::SwapchainKHR oldSwapchain = *swapChain;
 
 	// Get physical device surface properties and formats
 	vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(*surface, vks::dynamicDispatchLoader);
@@ -242,7 +243,6 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 	}
 
 	vk::SwapchainCreateInfoKHR swapchainCI = {};
-	swapchainCI.pNext = NULL;
 	swapchainCI.surface = *surface;
 	swapchainCI.minImageCount = desiredNumberOfSwapchainImages;
 	swapchainCI.imageFormat = colorFormat;
@@ -253,9 +253,9 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
 	swapchainCI.imageArrayLayers = 1;
 	swapchainCI.imageSharingMode = vk::SharingMode::eExclusive;
 	swapchainCI.queueFamilyIndexCount = 0;
-	swapchainCI.pQueueFamilyIndices = NULL;
 	swapchainCI.presentMode = swapchainPresentMode;
-	swapchainCI.oldSwapchain = oldSwapchain;
+    // Setting oldSwapChain to the saved handle of the previous swapchain aids in resource reuse and makes sure that we can still present already acquired images
+      swapchainCI.oldSwapchain = oldSwapchain;
 	// Setting clipped to VK_TRUE allows the implementation to discard rendering outside of the surface area
 	swapchainCI.clipped = VK_TRUE;
 	swapchainCI.compositeAlpha = compositeAlpha;
