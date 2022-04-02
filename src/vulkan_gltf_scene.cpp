@@ -168,30 +168,21 @@ void vulkan_gltf_scene::load_node(const tinygltf::Node& input_node,
         // glTF supports different component types of indices
         switch (accessor.componentType) {
           case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
-            auto buf = std::make_unique<std::uint32_t[]>(accessor.count);
-            std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]),
-                        accessor.count * sizeof(std::uint32_t),
-                        reinterpret_cast<std::byte*>(buf.get()));
+            const auto buf = reinterpret_cast<const std::uint32_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
             for (std::size_t index = 0; index < accessor.count; ++index) {
               index_buffer.push_back(buf[index] + vertex_start);
             }
             break;
           }
           case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
-            auto buf = std::make_unique<std::uint16_t[]>(accessor.count);
-            std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]),
-                        accessor.count * sizeof(std::uint16_t),
-                        reinterpret_cast<std::byte*>(buf.get()));
+            const auto buf = reinterpret_cast<const std::uint16_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
             for (size_t index = 0; index < accessor.count; index++) {
               index_buffer.push_back(buf[index] + vertex_start);
             }
             break;
           }
           case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
-            auto buf = std::make_unique<std::uint8_t[]>(accessor.count);
-            std::copy_n(reinterpret_cast<const std::byte*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]),
-                        accessor.count * sizeof(std::uint8_t),
-                        reinterpret_cast<std::byte*>(buf.get()));
+            const auto buf = reinterpret_cast<const std::uint8_t*>(&buffer.data[accessor.byteOffset + bufferView.byteOffset]);
             for (size_t index = 0; index < accessor.count; index++) {
               index_buffer.push_back(buf[index] + vertex_start);
             }
