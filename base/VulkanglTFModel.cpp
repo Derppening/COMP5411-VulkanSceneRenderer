@@ -258,7 +258,7 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 			imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
 			imageMemoryBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 			imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 			imageMemoryBarrier.image = *image;
 			imageMemoryBarrier.subresourceRange = subresourceRange;
 			blitCmd->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, {}, {}, {}, {imageMemoryBarrier});
