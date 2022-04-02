@@ -281,5 +281,11 @@ namespace vks
 			std::ifstream f(filename.c_str());
 			return !f.fail();
 		}
-	}
+
+        std::uint32_t alignedSize(std::uint32_t value, std::uint32_t alignment)
+        {
+            return (value + alignment - 1) & ~(alignment - 1);
+        }
+
+    }
 }

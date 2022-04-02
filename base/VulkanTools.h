@@ -102,5 +102,7 @@ namespace vks
 
 		/** @brief Checks if a file exists */
 		bool fileExists(const std::string &filename);
-	}
+
+        std::uint32_t alignedSize(std::uint32_t value, std::uint32_t alignment);
+    }
 }
