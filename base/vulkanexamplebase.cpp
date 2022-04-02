@@ -412,7 +412,10 @@ VulkanExampleBase::~VulkanExampleBase()
 		descriptorPool.reset();
 	}
 	destroyCommandBuffers();
-	renderPass.reset();
+    if (renderPass)
+    {
+        renderPass.reset();
+    }
 	frameBuffers.clear();
 
 	shaderModules.clear();
