@@ -23,11 +23,6 @@
 #include <stdexcept>
 #include <fstream>
 #include <optional>
-#if defined(_WIN32)
-#include <windows.h>
-#include <fcntl.h>
-#include <io.h>
-#endif
 
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000

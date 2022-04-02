@@ -43,7 +43,6 @@ This project adds and changes the following things:
 ### CMake Options
 
 - `CMAKE_BUILD_TYPE`: Build type of the application. `RelWithDebInfo` or `Release` is recommended.
-- `USE_NATIVE_WSI`: If enabled, uses the native Window System Integration framework instead of GLFW.
 
 ### Application Options
 
