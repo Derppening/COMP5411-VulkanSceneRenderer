@@ -47,7 +47,7 @@ namespace vkglTF
 		glTF texture loading class
 	*/
 	struct Texture {
-		vks::VulkanDevice* device;
+		vks::VulkanDevice* device = nullptr;
 		vk::UniqueImage image;
 		vk::ImageLayout imageLayout;
 		vk::UniqueDeviceMemory deviceMemory;
@@ -66,7 +66,7 @@ namespace vkglTF
 		glTF material class
 	*/
 	struct Material {
-		vks::VulkanDevice* device;
+		vks::VulkanDevice* device = nullptr;
 		enum AlphaMode { ALPHAMODE_OPAQUE, ALPHAMODE_MASK, ALPHAMODE_BLEND };
 		AlphaMode alphaMode = ALPHAMODE_OPAQUE;
 		float alphaCutoff = 1.0f;

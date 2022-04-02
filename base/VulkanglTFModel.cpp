@@ -53,10 +53,12 @@ void vkglTF::Texture::updateDescriptor()
 
 void vkglTF::Texture::destroy()
 {
-	view.reset();
-	image.reset();
-	deviceMemory.reset();
-	sampler.reset();
+    if (device) {
+        view.reset();
+        image.reset();
+        deviceMemory.reset();
+        sampler.reset();
+    }
 }
 
 void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path, vks::VulkanDevice *device, vk::Queue copyQueue)
