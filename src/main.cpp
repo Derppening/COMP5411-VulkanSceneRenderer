@@ -477,9 +477,9 @@ void vulkan_scene_renderer::prepare_pipelines() {
   for (auto &material : _gltf_scene_.materials) {
 
     struct MaterialSpecializationData {
-      bool alphaMask;
+      vk::Bool32 alphaMask;
       float alphaMaskCutoff;
-      bool preTransformPos;
+      vk::Bool32 preTransformPos;
       float tessLevel;
       float tessAlpha;
     } materialSpecializationData;
