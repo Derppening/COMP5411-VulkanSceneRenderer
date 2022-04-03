@@ -9,6 +9,8 @@
 
 #include "VulkanUIOverlay.h"
 
+#include <fmt/format.h>
+
 namespace vks 
 {
 	UIOverlay::UIOverlay()
@@ -411,7 +413,8 @@ namespace vks
 
     bool UIOverlay::inputFloat(const char *caption, float *value, float step, uint32_t precision)
 	{
-		bool res = ImGui::InputFloat(caption, value, step, step * 10.0f, precision);
+        const std::string format_str = fmt::format("%.{}f", precision);
+		bool res = ImGui::InputFloat(caption, value, step, step * 10.0f, format_str.c_str());
 		if (res) { updated = true; };
 		return res;
 	}

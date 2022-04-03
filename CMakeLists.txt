@@ -13,7 +13,7 @@ find_package(Vulkan REQUIRED)
 FetchContent_Declare(
         fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-        GIT_TAG 7.1.2
+        GIT_TAG 8.1.1
         GIT_SHALLOW ON)
 FetchContent_GetProperties(fmt)
 if (NOT fmt_POPULATED)
@@ -24,7 +24,7 @@ endif ()
 FetchContent_Declare(
         glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.2
+        GIT_TAG 3.3.6
         GIT_SHALLOW ON)
 FetchContent_GetProperties(glfw)
 if (NOT glfw_POPULATED)
@@ -40,7 +40,7 @@ endif ()
 FetchContent_Declare(
         imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
-        GIT_TAG v1.79
+        GIT_TAG v1.87
         GIT_SHALLOW ON)
 FetchContent_GetProperties(imgui)
 if (NOT imgui_POPULATED)
@@ -64,7 +64,7 @@ endif ()
 FetchContent_Declare(
         ktx
         GIT_REPOSITORY https://github.com/KhronosGroup/KTX-Software.git
-        GIT_TAG v4.0.0-beta5
+        GIT_TAG v4.0.0
         GIT_SHALLOW ON)
 FetchContent_GetProperties(ktx)
 if (NOT ktx_POPULATED)
