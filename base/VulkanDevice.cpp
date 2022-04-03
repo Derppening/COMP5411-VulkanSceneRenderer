@@ -25,13 +25,13 @@ namespace vks
 
 		// Store Properties features, limits and properties of the physical device for later use
 		// Device properties also contain limits and sparse properties
-		properties = physicalDevice.getProperties();
+		properties = physicalDevice.getProperties2();
 		// Features should be checked by the examples before using them
-		features = physicalDevice.getFeatures();
+		features = physicalDevice.getFeatures2();
 		// Memory properties are used regularly for creating all kinds of buffers
-		memoryProperties = physicalDevice.getMemoryProperties();
+		memoryProperties = physicalDevice.getMemoryProperties2();
 		// Queue family properties, used for setting up requested queues upon device creation
-		queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+		queueFamilyProperties = physicalDevice.getQueueFamilyProperties2();
 
 		// Get list of supported extensions
 		try {
@@ -56,7 +56,7 @@ namespace vks
 	/**
 	* Get the index of a memory type that has all the requested property bits set
 	*
-	* @param typeBits Bit mask with bits set for each memory type supported by the resource to request for (from vk::MemoryRequirements)
+	* @param typeBits Bit mask with bits set for each memory type supported by the resource to request for (from vk::MemoryRequirements2)
 	* @param properties Bit mask of properties for the memory type to request
 	* @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
 	* 
@@ -66,11 +66,11 @@ namespace vks
 	*/
 	uint32_t VulkanDevice::getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, vk::Bool32 *memTypeFound) const
 	{
-		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+		for (uint32_t i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; i++)
 		{
 			if ((typeBits & 1) == 1)
 			{
-				if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+				if ((memoryProperties.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 				{
 					if (memTypeFound)
 					{
@@ -110,7 +110,7 @@ namespace vks
 		{
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 			{
-				if ((queueFamilyProperties[i].queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)))
+				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)))
 				{
 					return i;
 				}
@@ -123,7 +123,7 @@ namespace vks
 		{
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 			{
-				if ((queueFamilyProperties[i].queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)) && (!(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute)))
+				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute)))
 				{
 					return i;
 				}
@@ -133,7 +133,7 @@ namespace vks
 		// For other queue types or if no separate compute queue is present, return the first one to support the requested flags
 		for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 		{
-			if (queueFamilyProperties[i].queueFlags & queueFlags)
+			if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags)
 			{
 				return i;
 			}
@@ -152,7 +152,7 @@ namespace vks
 	*
 	* @return vk::Result of the device creation call
 	*/
-	vk::Result VulkanDevice::createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, vk::QueueFlags requestedQueueTypes)
+	vk::Result VulkanDevice::createLogicalDevice(vk::PhysicalDeviceFeatures2 enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, vk::QueueFlags requestedQueueTypes)
 	{			
 		// Desired queues need to be requested upon logical device creation
 		// Due to differing queue family configurations of Vulkan implementations this can be a bit tricky, especially if the application
@@ -231,16 +231,15 @@ namespace vks
 		vk::DeviceCreateInfo deviceCreateInfo = {};
 		deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
-		
+		deviceCreateInfo.pEnabledFeatures = nullptr;
+
 		// If a pNext(Chain) has been passed, we need to add it to the device creation info
-		vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2{};
+		vk::PhysicalDeviceFeatures2 physicalDeviceFeatures2;
+        physicalDeviceFeatures2.features = enabledFeatures.features;
 		if (pNextChain) {
-			physicalDeviceFeatures2.features = enabledFeatures;
 			physicalDeviceFeatures2.pNext = pNextChain;
-			deviceCreateInfo.pEnabledFeatures = nullptr;
-			deviceCreateInfo.pNext = &physicalDeviceFeatures2;
 		}
+        deviceCreateInfo.pNext = &physicalDeviceFeatures2;
 
 		// Enable the debug marker extension if it is present (likely meaning a debugging tool is present)
 		if (extensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
@@ -292,12 +291,12 @@ namespace vks
 		*buffer = logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Create the memory backing up the buffer handle
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 		vk::MemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		memReqs = logicalDevice->getBufferMemoryRequirements(**buffer);
-		memAlloc.allocationSize = memReqs.size;
+		memReqs = logicalDevice->getBufferMemoryRequirements2(**buffer);
+		memAlloc.allocationSize = memReqs.memoryRequirements.size;
 		// Find a memory type index that fits the properties of the buffer
-		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryRequirements.memoryTypeBits, memoryPropertyFlags);
 		// If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set we also need to enable the appropriate flag during allocation
 		vk::MemoryAllocateFlagsInfoKHR allocFlagsInfo{};
 		if (usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) {
@@ -350,12 +349,12 @@ namespace vks
 		buffer->buffer = logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Create the memory backing up the buffer handle
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 		vk::MemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		memReqs = logicalDevice->getBufferMemoryRequirements(*buffer->buffer);
-		memAlloc.allocationSize = memReqs.size;
+		memReqs = logicalDevice->getBufferMemoryRequirements2(*buffer->buffer);
+		memAlloc.allocationSize = memReqs.memoryRequirements.size;
 		// Find a memory type index that fits the properties of the buffer
-		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryRequirements.memoryTypeBits, memoryPropertyFlags);
 		// If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set we also need to enable the appropriate flag during allocation
 		vk::MemoryAllocateFlagsInfoKHR allocFlagsInfo{};
 		if (usageFlags & vk::BufferUsageFlagBits::eShaderDeviceAddress) {
@@ -364,7 +363,7 @@ namespace vks
 		}
 		buffer->memory = logicalDevice->allocateMemoryUnique(memAlloc);
 
-		buffer->alignment = memReqs.alignment;
+		buffer->alignment = memReqs.memoryRequirements.alignment;
 		buffer->size = size;
 		buffer->usageFlags = vk::BufferUsageFlags(usageFlags);
 		buffer->memoryPropertyFlags = vk::MemoryPropertyFlags(memoryPropertyFlags);
@@ -536,12 +535,12 @@ namespace vks
 		std::vector<vk::Format> depthFormats = { vk::Format::eD32SfloatS8Uint, vk::Format::eD32Sfloat, vk::Format::eD24UnormS8Uint, vk::Format::eD16UnormS8Uint, vk::Format::eD16Unorm};
 		for (auto& format : depthFormats)
 		{
-			vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(format);
+			vk::FormatProperties2 formatProperties = physicalDevice.getFormatProperties2(format);
 			// Format must support depth stencil attachment for optimal tiling
-			if (formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
+			if (formatProperties.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
 			{
 				if (checkSamplingSupport) {
-					if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage)) {
+					if (!(formatProperties.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage)) {
 						continue;
 					}
 				}

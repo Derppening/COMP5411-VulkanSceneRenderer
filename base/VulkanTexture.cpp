@@ -62,7 +62,7 @@ namespace vks
 		ktx_size_t ktxTextureSize = ktxTexture_GetDataSize(ktxTexture);
 
 		// Get device properties for the requested texture format
-		vk::FormatProperties formatProperties = device->physicalDevice.getFormatProperties(format);
+		vk::FormatProperties2 formatProperties = device->physicalDevice.getFormatProperties2(format);
 
 		// Only use linear tiling if requested (and supported by the device)
 		// Support for linear tiling is mostly limited, so prefer to use
@@ -72,7 +72,7 @@ namespace vks
 		vk::Bool32 useStaging = !forceLinear;
 
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 
 		// Use a separate command buffer for texture loading
 		vk::UniqueCommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
@@ -92,18 +92,18 @@ namespace vks
 			stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 			// Get memory requirements for the staging buffer (alignment, memory type bits)
-			memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
+			memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
 
-			memAllocInfo.allocationSize = memReqs.size;
+			memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 			// Get memory type index for a host visible buffer
-			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 			stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 			device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 			// Copy texture data into staging buffer
 			uint8_t *data;
-			data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+			data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 			std::copy_n(ktxTextureData, ktxTextureSize, data);
 			device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -148,11 +148,11 @@ namespace vks
 			}
 			image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-			memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
+			memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
 
-			memAllocInfo.allocationSize = memReqs.size;
+			memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 
-			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 			deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 			device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
 
@@ -196,7 +196,7 @@ namespace vks
 			// depending on implementation (e.g. no mip maps, only one layer, etc.)
 
 			// Check if this support is supported for linear tiling
-			assert(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage);
+			assert(formatProperties.formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage);
 
 			vk::UniqueImage mappableImage;
 			vk::UniqueDeviceMemory mappableMemory;
@@ -218,12 +218,12 @@ namespace vks
 
 			// Get memory requirements for this image 
 			// like size and alignment
-			memReqs = device->logicalDevice->getImageMemoryRequirements(*mappableImage);
+			memReqs = device->logicalDevice->getImageMemoryRequirements2(*mappableImage);
 			// Set memory allocation size to required memory size
-			memAllocInfo.allocationSize = memReqs.size;
+			memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 
 			// Get memory type that can be mapped to host memory
-			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 			// Allocate host memory
 			mappableMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
@@ -245,10 +245,10 @@ namespace vks
 			subResLayout = device->logicalDevice->getImageSubresourceLayout(*mappableImage, subRes);
 
 			// Map image memory
-			data = device->logicalDevice->mapMemory(*mappableMemory, 0, memReqs.size, {});
+			data = device->logicalDevice->mapMemory(*mappableMemory, 0, memReqs.memoryRequirements.size, {});
 
 			// Copy image data into memory
-			std::copy_n(reinterpret_cast<std::byte*>(ktxTextureData), memReqs.size, static_cast<std::byte*>(data));
+			std::copy_n(reinterpret_cast<std::byte*>(ktxTextureData), memReqs.memoryRequirements.size, static_cast<std::byte*>(data));
 
 			device->logicalDevice->unmapMemory(*mappableMemory);
 
@@ -280,8 +280,8 @@ namespace vks
 		// Max level-of-detail should match mip level count
 		samplerCreateInfo.maxLod = (useStaging) ? (float)mipLevels : 0.0f;
 		// Only enable anisotropic filtering if enabled on the device
-		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.samplerAnisotropy ? device->properties.limits.maxSamplerAnisotropy : 1.0f;
-		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.samplerAnisotropy;
+		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.features.samplerAnisotropy ? device->properties.properties.limits.maxSamplerAnisotropy : 1.0f;
+		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.features.samplerAnisotropy;
 		samplerCreateInfo.borderColor = vk::BorderColor::eFloatOpaqueWhite;
 		sampler = device->logicalDevice->createSamplerUnique(samplerCreateInfo);
 
@@ -328,7 +328,7 @@ namespace vks
 		mipLevels = 1;
 
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 
 		// Use a separate command buffer for texture loading
 		vk::UniqueCommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
@@ -346,18 +346,18 @@ namespace vks
 		stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Get memory requirements for the staging buffer (alignment, memory type bits)
-		memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
+		memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
 
-		memAllocInfo.allocationSize = memReqs.size;
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 		// Get memory type index for a host visible buffer
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 		stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 		// Copy texture data into staging buffer
 		uint8_t *data;
-		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 		std::copy_n(static_cast<std::byte*>(buffer), bufferSize, reinterpret_cast<std::byte*>(data));
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -390,11 +390,11 @@ namespace vks
 		}
 		image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-		memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
+		memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
 
-		memAllocInfo.allocationSize = memReqs.size;
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 		deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
 
@@ -488,7 +488,7 @@ namespace vks
 		ktx_size_t ktxTextureSize = ktxTexture_GetDataSize(ktxTexture);
 
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 
 		// Create a host-visible staging buffer that contains the raw image data
 		vk::UniqueBuffer stagingBuffer;
@@ -503,18 +503,18 @@ namespace vks
 		stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Get memory requirements for the staging buffer (alignment, memory type bits)
-		memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
+		memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
 
-		memAllocInfo.allocationSize = memReqs.size;
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 		// Get memory type index for a host visible buffer
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 		stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 		// Copy texture data into staging buffer
 		uint8_t *data;
-		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -563,10 +563,10 @@ namespace vks
 
 		image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-		memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
+		memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
 
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
@@ -612,8 +612,8 @@ namespace vks
 		samplerCreateInfo.addressModeV = samplerCreateInfo.addressModeU;
 		samplerCreateInfo.addressModeW = samplerCreateInfo.addressModeU;
 		samplerCreateInfo.mipLodBias = 0.0f;
-		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.samplerAnisotropy ? device->properties.limits.maxSamplerAnisotropy : 1.0f;
-		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.samplerAnisotropy;
+		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.features.samplerAnisotropy ? device->properties.properties.limits.maxSamplerAnisotropy : 1.0f;
+		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.features.samplerAnisotropy;
 		samplerCreateInfo.compareOp = vk::CompareOp::eNever;
 		samplerCreateInfo.minLod = 0.0f;
 		samplerCreateInfo.maxLod = (float)mipLevels;
@@ -666,7 +666,7 @@ namespace vks
 		ktx_size_t ktxTextureSize = ktxTexture_GetDataSize(ktxTexture);
 
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		vk::MemoryRequirements memReqs;
+		vk::MemoryRequirements2 memReqs;
 
 		// Create a host-visible staging buffer that contains the raw image data
 		vk::UniqueBuffer stagingBuffer;
@@ -681,18 +681,18 @@ namespace vks
 		stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		// Get memory requirements for the staging buffer (alignment, memory type bits)
-		memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
+		memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
 
-		memAllocInfo.allocationSize = memReqs.size;
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
 		// Get memory type index for a host visible buffer
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 		stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 		// Copy texture data into staging buffer
 		uint8_t *data;
-		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -745,10 +745,10 @@ namespace vks
 
 		image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-		memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
+		memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
 
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
@@ -794,8 +794,8 @@ namespace vks
 		samplerCreateInfo.addressModeV = samplerCreateInfo.addressModeU;
 		samplerCreateInfo.addressModeW = samplerCreateInfo.addressModeU;
 		samplerCreateInfo.mipLodBias = 0.0f;
-		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.samplerAnisotropy ? device->properties.limits.maxSamplerAnisotropy : 1.0f;
-		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.samplerAnisotropy;
+		samplerCreateInfo.maxAnisotropy = device->enabledFeatures.features.samplerAnisotropy ? device->properties.properties.limits.maxSamplerAnisotropy : 1.0f;
+		samplerCreateInfo.anisotropyEnable = device->enabledFeatures.features.samplerAnisotropy;
 		samplerCreateInfo.compareOp = vk::CompareOp::eNever;
 		samplerCreateInfo.minLod = 0.0f;
 		samplerCreateInfo.maxLod = (float)mipLevels;

@@ -56,8 +56,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   ubo<_matrices> _matrices_ubo_;
 
   // Alignment required since boolean is just a int32_t
-  struct alignas(4) _settings {
-    bool blinnPhong = false;
+  struct _settings {
+    vk::Bool32 blinnPhong = VK_FALSE;
   };
 
   ubo<_settings> _settings_ubo_;

@@ -28,7 +28,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	}
 
 	// Get available queue family properties
-	std::vector<vk::QueueFamilyProperties> queueProps = physicalDevice.getQueueFamilyProperties();
+	std::vector<vk::QueueFamilyProperties2> queueProps = physicalDevice.getQueueFamilyProperties2();
     uint32_t queueCount = queueProps.size();
 
 	// Iterate over each queue to learn whether it supports presenting:
@@ -47,7 +47,7 @@ void VulkanSwapChain::initSurface(GLFWwindow* window)
 	uint32_t presentQueueNodeIndex = UINT32_MAX;
 	for (uint32_t i = 0; i < queueCount; i++) 
 	{
-		if ((queueProps[i].queueFlags & vk::QueueFlagBits::eGraphics))
+		if ((queueProps[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics))
 		{
 			if (graphicsQueueNodeIndex == UINT32_MAX) 
 			{

@@ -49,9 +49,9 @@ namespace vks
 
 			for (auto& format : depthFormats)
 			{
-				vk::FormatProperties formatProps = physicalDevice.getFormatProperties(format);
+				vk::FormatProperties2 formatProps = physicalDevice.getFormatProperties2(format);
 				// Format must support depth stencil attachment for optimal tiling
-				if (formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
+				if (formatProps.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
 				{
 					return std::make_optional(format);
 				}
@@ -63,13 +63,13 @@ namespace vks
 		// Returns if a given format support LINEAR filtering
 		vk::Bool32 formatIsFilterable(vk::PhysicalDevice physicalDevice, vk::Format format, vk::ImageTiling tiling)
 		{
-			vk::FormatProperties formatProps = physicalDevice.getFormatProperties(format);
+			vk::FormatProperties2 formatProps = physicalDevice.getFormatProperties2(format);
 
 			if (tiling == vk::ImageTiling::eOptimal)
-				return vk::Bool32{formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
+				return vk::Bool32{formatProps.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
 
 			if (tiling == vk::ImageTiling::eLinear)
-				return vk::Bool32{formatProps.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
+				return vk::Bool32{formatProps.formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear};
 
 			return false;
 		}

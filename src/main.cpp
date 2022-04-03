@@ -39,12 +39,12 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
 }
 
 void vulkan_scene_renderer::getEnabledFeatures() {
-  enabledFeatures.sampleRateShading = deviceFeatures.sampleRateShading;
-  enabledFeatures.samplerAnisotropy = deviceFeatures.samplerAnisotropy;
-  enabledFeatures.geometryShader = deviceFeatures.geometryShader;
-  enabledFeatures.tessellationShader = deviceFeatures.tessellationShader;
-  enabledFeatures.pipelineStatisticsQuery = deviceFeatures.pipelineStatisticsQuery;
-  enabledFeatures.fillModeNonSolid = deviceFeatures.fillModeNonSolid;
+  enabledFeatures.features.sampleRateShading = deviceFeatures.features.sampleRateShading;
+  enabledFeatures.features.samplerAnisotropy = deviceFeatures.features.samplerAnisotropy;
+  enabledFeatures.features.geometryShader = deviceFeatures.features.geometryShader;
+  enabledFeatures.features.tessellationShader = deviceFeatures.features.tessellationShader;
+  enabledFeatures.features.pipelineStatisticsQuery = deviceFeatures.features.pipelineStatisticsQuery;
+  enabledFeatures.features.fillModeNonSolid = deviceFeatures.features.fillModeNonSolid;
 }
 
 void vulkan_scene_renderer::buildCommandBuffers() {
@@ -115,7 +115,7 @@ void vulkan_scene_renderer::setupRenderPass() {
   if (_current_sample_count() == vk::SampleCountFlagBits::e1) {
     VulkanExampleBase::setupRenderPass();
   } else {
-    std::array<vk::AttachmentDescription, 3> attachments = {};
+    std::array<vk::AttachmentDescription2, 3> attachments = {};
 
     // Multisampled attachment that we render to
     attachments[0].format = swapChain.colorFormat;
@@ -147,20 +147,20 @@ void vulkan_scene_renderer::setupRenderPass() {
     attachments[2].initialLayout = vk::ImageLayout::eUndefined;
     attachments[2].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
-    vk::AttachmentReference color_reference = {};
+    vk::AttachmentReference2 color_reference = {};
     color_reference.attachment = 0;
     color_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-    vk::AttachmentReference depth_reference = {};
+    vk::AttachmentReference2 depth_reference = {};
     depth_reference.attachment = 2;
     depth_reference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
     // Resolve attachment reference for the color attachment
-    vk::AttachmentReference resolve_reference = {};
+    vk::AttachmentReference2 resolve_reference = {};
     resolve_reference.attachment = 1;
     resolve_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-    vk::SubpassDescription subpass = {};
+    vk::SubpassDescription2 subpass = {};
     subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_reference;
@@ -168,7 +168,7 @@ void vulkan_scene_renderer::setupRenderPass() {
     subpass.pResolveAttachments = &resolve_reference;
     subpass.pDepthStencilAttachment = &depth_reference;
 
-    std::array<vk::SubpassDependency, 2> dependencies = {};
+    std::array<vk::SubpassDependency2, 2> dependencies = {};
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
@@ -188,7 +188,7 @@ void vulkan_scene_renderer::setupRenderPass() {
     dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
     dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
-    vk::RenderPassCreateInfo render_pass_info = vks::initializers::renderPassCreateInfo();
+    vk::RenderPassCreateInfo2 render_pass_info = vks::initializers::renderPassCreateInfo();
     render_pass_info.attachmentCount = attachments.size();
     render_pass_info.pAttachments = attachments.data();
     render_pass_info.subpassCount = 1;
@@ -196,7 +196,7 @@ void vulkan_scene_renderer::setupRenderPass() {
     render_pass_info.dependencyCount = 2;
     render_pass_info.pDependencies = dependencies.data();
 
-    renderPass = device.createRenderPassUnique(render_pass_info);
+    renderPass = device.createRenderPass2Unique(render_pass_info);
   }
 }
 
@@ -406,7 +406,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   vk::PipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
 
   vk::PipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_current_sample_count(), {});
-  if (enabledFeatures.sampleRateShading && _current_sample_count() != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
+  if (enabledFeatures.features.sampleRateShading && _current_sample_count() != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
     multisampleStateCI.sampleShadingEnable = true;
     multisampleStateCI.minSampleShading = 0.25f;
   }
@@ -441,7 +441,7 @@ void vulkan_scene_renderer::prepare_pipelines() {
   pipelineCI.pViewportState = &viewportStateCI;
   pipelineCI.pDepthStencilState = &depthStencilStateCI;
   pipelineCI.pDynamicState = &dynamicStateCI;
-  if (enabledFeatures.tessellationShader) {
+  if (enabledFeatures.features.tessellationShader) {
     pipelineCI.pTessellationState = &tessellation_state;
   }
 
@@ -624,7 +624,7 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       buildCommandBuffers();
     }
 
-    if (enabledFeatures.geometryShader) {
+    if (enabledFeatures.features.geometryShader) {
       if (overlay->inputFloat("Scene Normals Length", &_gs_pipeline_.length(), 1.0f, 0)) {
         _gs_pipeline_.length() = std::max(_gs_pipeline_.length(), 0.0f);
 
@@ -633,7 +633,7 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (enabledFeatures.fillModeNonSolid) {
+    if (enabledFeatures.features.fillModeNonSolid) {
       if (overlay->checkBox("Wireframe", &_wireframe_)) {
         _light_cube_.wireframe() = _wireframe_;
         _light_cube_.prepare_pipeline();
@@ -643,14 +643,14 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (overlay->checkBox("Blinn-Phong", &_settings_ubo_.values().blinnPhong)) {
+    if (overlay->checkBox("Blinn-Phong", reinterpret_cast<bool*>(&_settings_ubo_.values().blinnPhong))) {
       _settings_ubo_.update();
     }
 
     if (overlay->comboBox("Multisampling", &_sample_count_option_, _sample_count_labels_)) {
       _update_sample_count(_current_sample_count());
     }
-    if (enabledFeatures.sampleRateShading) {
+    if (enabledFeatures.features.sampleRateShading) {
       if (_current_sample_count() != vk::SampleCountFlagBits::e1) {
         if (overlay->checkBox("Use Sample-Rate Shading", &_use_sample_shading_)) {
           _gs_pipeline_.use_sample_shading() = _use_sample_shading_;
@@ -791,7 +791,7 @@ void vulkan_scene_renderer::windowResized() {
 }
 
 vk::SampleCountFlagBits vulkan_scene_renderer::_get_max_usable_sample_count() {
-  auto counts = std::min(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
+  auto counts = std::min(deviceProperties.properties.limits.framebufferColorSampleCounts, deviceProperties.properties.limits.framebufferDepthSampleCounts);
 
   if (_supported_sample_counts_.empty()) {
     _supported_sample_counts_.emplace_back(vk::SampleCountFlagBits::e1);

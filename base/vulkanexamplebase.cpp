@@ -114,7 +114,7 @@ void VulkanExampleBase::renderFrame()
 
 std::string VulkanExampleBase::getWindowTitle()
 {
-	std::string device(deviceProperties.deviceName);
+	std::string device(deviceProperties.properties.deviceName);
 	std::string windowTitle;
 	windowTitle = title + " - " + device;
 	if (!settings.overlay) {
@@ -306,7 +306,7 @@ void VulkanExampleBase::updateOverlay()
 	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 	ImGui::TextUnformatted(title.c_str());
-	ImGui::TextUnformatted(deviceProperties.deviceName);
+	ImGui::TextUnformatted(deviceProperties.properties.deviceName);
 	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
 
 	ImGui::PushItemWidth(110.0f * UIOverlay.scale);
@@ -504,19 +504,19 @@ bool VulkanExampleBase::initVulkan()
 	if (commandLineParser.isSet("gpulist")) {
 		std::cout << "Available Vulkan devices" << "\n";
 		for (std::uint32_t i = 0; i < gpuCount; i++) {
-            vk::PhysicalDeviceProperties deviceProperties = physicalDevices[i].getProperties();
-			std::cout << "Device [" << i << "] : " << deviceProperties.deviceName << std::endl;
-			std::cout << " Type: " << vks::tools::physicalDeviceTypeString(deviceProperties.deviceType) << "\n";
-			std::cout << " API: " << (deviceProperties.apiVersion >> 22) << "." << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.apiVersion & 0xfff) << "\n";
+            vk::PhysicalDeviceProperties2 deviceProperties = physicalDevices[i].getProperties2();
+			std::cout << "Device [" << i << "] : " << deviceProperties.properties.deviceName << std::endl;
+			std::cout << " Type: " << vks::tools::physicalDeviceTypeString(deviceProperties.properties.deviceType) << "\n";
+			std::cout << " API: " << (deviceProperties.properties.apiVersion >> 22) << "." << ((deviceProperties.properties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.properties.apiVersion & 0xfff) << "\n";
 		}
 	}
 
 	physicalDevice = physicalDevices[selectedDevice];
 
 	// Store properties (including limits), features and memory properties of the physical device (so that examples can check against them)
-	deviceProperties = physicalDevice.getProperties();
-	deviceFeatures = physicalDevice.getFeatures();
-	deviceMemoryProperties = physicalDevice.getMemoryProperties();
+	deviceProperties = physicalDevice.getProperties2();
+	deviceFeatures = physicalDevice.getFeatures2();
+	deviceMemoryProperties = physicalDevice.getMemoryProperties2();
 
 	// Derived examples can override this to set actual features (based on above readings) to enable for logical device creation
 	getEnabledFeatures();
@@ -691,11 +691,11 @@ void VulkanExampleBase::setupDepthStencil()
 	imageCI.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
     depthStencil.image = device.createImageUnique(imageCI);
-	vk::MemoryRequirements memReqs = device.getImageMemoryRequirements(*depthStencil.image);
+	vk::MemoryRequirements2 memReqs = device.getImageMemoryRequirements2(*depthStencil.image);
 
 	vk::MemoryAllocateInfo memAllloc{};
-	memAllloc.allocationSize = memReqs.size;
-	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	memAllloc.allocationSize = memReqs.memoryRequirements.size;
+	memAllloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 	depthStencil.mem = device.allocateMemoryUnique(memAllloc);
 	device.bindImageMemory(*depthStencil.image, *depthStencil.mem, 0);
 
@@ -742,7 +742,7 @@ void VulkanExampleBase::setupFrameBuffer()
 
 void VulkanExampleBase::setupRenderPass()
 {
-	std::array<vk::AttachmentDescription, 2> attachments = {};
+	std::array<vk::AttachmentDescription2, 2> attachments = {};
 	// Color attachment
 	attachments[0].format = swapChain.colorFormat;
 	attachments[0].samples = vk::SampleCountFlagBits::e1;
@@ -762,15 +762,15 @@ void VulkanExampleBase::setupRenderPass()
 	attachments[1].initialLayout = vk::ImageLayout::eUndefined;
 	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
-	vk::AttachmentReference colorReference = {};
+	vk::AttachmentReference2 colorReference = {};
 	colorReference.attachment = 0;
 	colorReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-	vk::AttachmentReference depthReference = {};
+	vk::AttachmentReference2 depthReference = {};
 	depthReference.attachment = 1;
 	depthReference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
-	vk::SubpassDescription subpassDescription = {};
+	vk::SubpassDescription2 subpassDescription = {};
 	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pColorAttachments = &colorReference;
@@ -782,7 +782,7 @@ void VulkanExampleBase::setupRenderPass()
 	subpassDescription.pResolveAttachments = nullptr;
 
 	// Subpass dependencies for layout transitions
-	std::array<vk::SubpassDependency, 2> dependencies;
+	std::array<vk::SubpassDependency2, 2> dependencies;
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass = 0;
@@ -800,7 +800,7 @@ void VulkanExampleBase::setupRenderPass()
 	dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
 	dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
-	vk::RenderPassCreateInfo renderPassInfo = {};
+	vk::RenderPassCreateInfo2 renderPassInfo = {};
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
@@ -808,7 +808,7 @@ void VulkanExampleBase::setupRenderPass()
 	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassInfo.pDependencies = dependencies.data();
 
-	renderPass = device.createRenderPassUnique(renderPassInfo);
+	renderPass = device.createRenderPass2Unique(renderPassInfo);
 }
 
 void VulkanExampleBase::getEnabledFeatures() {}

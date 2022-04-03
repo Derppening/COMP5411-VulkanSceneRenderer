@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 
 void query_pool::setup(VulkanExampleBase& app) {
-  if (!app.enabledFeatures.pipelineStatisticsQuery) {
+  if (!app.enabledFeatures.features.pipelineStatisticsQuery) {
     return;
   }
 
@@ -12,16 +12,16 @@ void query_pool::setup(VulkanExampleBase& app) {
       "Input assembly primitives count    ",
       "Vertex shader invocations          ",
       "Clipping stage primitives processed",
-      "Clipping stage primitives output    ",
+      "Clipping stage primitives output   ",
       "Fragment shader invocations        "
   };
-  if (app.enabledFeatures.geometryShader) {
+  if (app.enabledFeatures.features.geometryShader) {
     _pipeline_stat_names_.insert(_pipeline_stat_names_.begin() + 3, {
         "Geometry shader invocations",
         "Geometry shader primitives count"
     });
   }
-  if (app.enabledFeatures.tessellationShader) {
+  if (app.enabledFeatures.features.tessellationShader) {
     _pipeline_stat_names_.insert(_pipeline_stat_names_.end(), {
         "Tessellation control shader patches",
         "Tessellation eval. shader invocations"
@@ -37,12 +37,12 @@ void query_pool::setup(VulkanExampleBase& app) {
           vk::QueryPipelineStatisticFlagBits::eClippingInvocations |
           vk::QueryPipelineStatisticFlagBits::eClippingPrimitives |
           vk::QueryPipelineStatisticFlagBits::eFragmentShaderInvocations;
-  if (app.enabledFeatures.geometryShader) {
+  if (app.enabledFeatures.features.geometryShader) {
     query_pool_info.pipelineStatistics = query_pool_info.pipelineStatistics |
         vk::QueryPipelineStatisticFlagBits::eGeometryShaderInvocations |
         vk::QueryPipelineStatisticFlagBits::eGeometryShaderPrimitives;
   }
-  if (app.enabledFeatures.tessellationShader) {
+  if (app.enabledFeatures.features.tessellationShader) {
     query_pool_info.pipelineStatistics = query_pool_info.pipelineStatistics |
         vk::QueryPipelineStatisticFlagBits::eTessellationControlShaderPatches |
         vk::QueryPipelineStatisticFlagBits::eTessellationEvaluationShaderInvocations;

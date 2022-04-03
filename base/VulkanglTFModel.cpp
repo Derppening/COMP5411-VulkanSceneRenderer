@@ -104,18 +104,18 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 
 		format = vk::Format::eR8G8B8A8Unorm;
 
-		vk::FormatProperties formatProperties;
+		vk::FormatProperties2 formatProperties;
 
 		width = gltfimage.width;
 		height = gltfimage.height;
 		mipLevels = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
 
-		formatProperties = device->physicalDevice.getFormatProperties(format);
-		assert(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc);
-        assert(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst);
+		formatProperties = device->physicalDevice.getFormatProperties2(format);
+		assert(formatProperties.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc);
+        assert(formatProperties.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst);
 
 		vk::MemoryAllocateInfo memAllocInfo{};
-		vk::MemoryRequirements memReqs{};
+		vk::MemoryRequirements2 memReqs{};
 
 		vk::UniqueBuffer stagingBuffer;
 		vk::UniqueDeviceMemory stagingMemory;
@@ -125,14 +125,14 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 		bufferCreateInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
 		bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive;
 		stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
-		memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 		uint8_t* data;
-		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 		std::copy_n(buffer, bufferSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -149,9 +149,9 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 		imageCreateInfo.extent = vk::Extent3D{ width, height, 1 };
 		imageCreateInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled;
 		image = device->logicalDevice->createImageUnique(imageCreateInfo);
-		memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 		deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
 
@@ -290,7 +290,7 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 		format = vk::Format::eR8G8B8A8Unorm;
 
 		// Get device properties for the requested texture format
-		vk::FormatProperties formatProperties = device->physicalDevice.getFormatProperties(format);
+		vk::FormatProperties2 formatProperties = device->physicalDevice.getFormatProperties2(format);
 
 		vk::UniqueCommandBuffer copyCmd = device->createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
 		vk::UniqueBuffer stagingBuffer;
@@ -304,14 +304,14 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 		stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		vk::MemoryRequirements memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		vk::MemoryRequirements2 memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 		uint8_t* data;
-		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+		data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 		std::copy_n(ktxTextureData, ktxTextureSize, data);
 		device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -347,9 +347,9 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 		imageCreateInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
 		image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-		memReqs = device->logicalDevice->getImageMemoryRequirements(*image);
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memReqs = device->logicalDevice->getImageMemoryRequirements2(*image);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 		deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*image, *deviceMemory, 0);
 
@@ -610,16 +610,16 @@ void vkglTF::Model::createEmptyTexture(vk::Queue transferQueue)
 	stagingBuffer = device->logicalDevice->createBufferUnique(bufferCreateInfo);
 
 	vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-	vk::MemoryRequirements memReqs;
-	memReqs = device->logicalDevice->getBufferMemoryRequirements(*stagingBuffer);
-	memAllocInfo.allocationSize = memReqs.size;
-	memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	vk::MemoryRequirements2 memReqs;
+	memReqs = device->logicalDevice->getBufferMemoryRequirements2(*stagingBuffer);
+	memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+	memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 	stagingMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 	device->logicalDevice->bindBufferMemory(*stagingBuffer, *stagingMemory, 0);
 
 	// Copy texture data into staging buffer
 	uint8_t* data;
-	data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.size, {});
+	data = (uint8_t*)device->logicalDevice->mapMemory(*stagingMemory, 0, memReqs.memoryRequirements.size, {});
 	std::copy_n(buffer, bufferSize, data);
 	device->logicalDevice->unmapMemory(*stagingMemory);
 
@@ -644,9 +644,9 @@ void vkglTF::Model::createEmptyTexture(vk::Queue transferQueue)
 	imageCreateInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
 	emptyTexture.image = device->logicalDevice->createImageUnique(imageCreateInfo);
 
-	memReqs = device->logicalDevice->getImageMemoryRequirements(*emptyTexture.image);
-	memAllocInfo.allocationSize = memReqs.size;
-	memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	memReqs = device->logicalDevice->getImageMemoryRequirements2(*emptyTexture.image);
+	memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+	memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 	emptyTexture.deviceMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 	device->logicalDevice->bindImageMemory(*emptyTexture.image, *emptyTexture.deviceMemory, 0);
 

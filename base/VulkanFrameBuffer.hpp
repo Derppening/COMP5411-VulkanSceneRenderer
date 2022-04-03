@@ -27,7 +27,7 @@ namespace vks
 		vk::UniqueImageView view;
 		vk::Format format;
 		vk::ImageSubresourceRange subresourceRange;
-		vk::AttachmentDescription description;
+		vk::AttachmentDescription2 description;
 
 		/**
 		* @brief Returns true if the attachment has a depth component
@@ -176,13 +176,13 @@ namespace vks
 			image.usage = createinfo.usage;
 
 			vk::MemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-			vk::MemoryRequirements memReqs;
+			vk::MemoryRequirements2 memReqs;
 
 			// Create image for this attachment
 			attachment.image = vulkanDevice->logicalDevice->createImageUnique(image);
-			memReqs = vulkanDevice->logicalDevice->getImageMemoryRequirements(*attachment.image);
-			memAlloc.allocationSize = memReqs.size;
-			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+			memReqs = vulkanDevice->logicalDevice->getImageMemoryRequirements2(*attachment.image);
+			memAlloc.allocationSize = memReqs.memoryRequirements.size;
+			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 			attachment.memory = vulkanDevice->logicalDevice->allocateMemoryUnique(memAlloc);
 			vulkanDevice->logicalDevice->bindImageMemory(*attachment.image, *attachment.memory, {});
 
@@ -201,7 +201,7 @@ namespace vks
 			attachment.view = vulkanDevice->logicalDevice->createImageViewUnique(imageView);
 
 			// Fill attachment description
-			attachment.description = vk::AttachmentDescription{};
+			attachment.description = vk::AttachmentDescription2{};
 			attachment.description.samples = createinfo.imageSampleCount;
 			attachment.description.loadOp = vk::AttachmentLoadOp::eClear;
 			attachment.description.storeOp = (createinfo.usage & vk::ImageUsageFlagBits::eSampled) ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare;
@@ -260,15 +260,15 @@ namespace vks
 		*/
 		vk::Result createRenderPass()
 		{
-			std::vector<vk::AttachmentDescription> attachmentDescriptions;
+			std::vector<vk::AttachmentDescription2> attachmentDescriptions;
 			for (auto& attachment : attachments)
 			{
 				attachmentDescriptions.push_back(attachment.description);
 			};
 
 			// Collect attachment references
-			std::vector<vk::AttachmentReference> colorReferences;
-			vk::AttachmentReference depthReference = {};
+			std::vector<vk::AttachmentReference2> colorReferences;
+			vk::AttachmentReference2 depthReference = {};
 			bool hasDepth = false; 
 			bool hasColor = false;
 
@@ -293,7 +293,7 @@ namespace vks
 			};
 
 			// Default render pass setup uses only one subpass
-			vk::SubpassDescription subpass = {};
+			vk::SubpassDescription2 subpass = {};
 			subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 			if (hasColor)
 			{
@@ -306,7 +306,7 @@ namespace vks
 			}
 
 			// Use subpass dependencies for attachment layout transitions
-			std::array<vk::SubpassDependency, 2> dependencies;
+			std::array<vk::SubpassDependency2, 2> dependencies;
 
 			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[0].dstSubpass = 0;
@@ -325,14 +325,14 @@ namespace vks
 			dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
 			// Create render pass
-			vk::RenderPassCreateInfo renderPassInfo = {};
+			vk::RenderPassCreateInfo2 renderPassInfo = {};
 			renderPassInfo.pAttachments = attachmentDescriptions.data();
 			renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
 			renderPassInfo.dependencyCount = 2;
 			renderPassInfo.pDependencies = dependencies.data();
-			renderPass = vulkanDevice->logicalDevice->createRenderPass(renderPassInfo);
+			renderPass = vulkanDevice->logicalDevice->createRenderPass2(renderPassInfo);
 
 			std::vector<vk::ImageView> attachmentViews;
 			for (auto& attachment : attachments)

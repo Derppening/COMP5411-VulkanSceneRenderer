@@ -23,7 +23,7 @@ void normals_pipeline::create_pipeline() {
   auto viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, {});
 
   auto multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(_sample_count_, {});
-  if (app().vulkanDevice->enabledFeatures.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
+  if (app().vulkanDevice->enabledFeatures.features.sampleRateShading && _sample_count_ != vk::SampleCountFlagBits::e1 && _use_sample_shading_) {
     multisampleStateCI.sampleShadingEnable = true;
     multisampleStateCI.minSampleShading = 0.25f;
   }
@@ -80,7 +80,7 @@ void normals_pipeline::create_pipeline() {
   shaderStages[2].pSpecializationInfo = &gs_specialization_info;
 
   std::vector<vk::SpecializationMapEntry> vs_specialization_map_entries = {
-      vks::initializers::specializationMapEntry(2, 0, sizeof(app().enabledFeatures.tessellationShader))
+      vks::initializers::specializationMapEntry(2, 0, sizeof(app().enabledFeatures.features.tessellationShader))
   };
   int b = true;
   auto vs_specialization_info = vks::initializers::specializationInfo(gs_specialization_map_entries, sizeof(b), &b);
@@ -90,7 +90,7 @@ void normals_pipeline::create_pipeline() {
 }
 
 bool normals_pipeline::supported() const {
-  return app().enabledFeatures.geometryShader;
+  return app().enabledFeatures.features.geometryShader;
 }
 
 void normals_pipeline::setup(VulkanExampleBase& app) {

@@ -66,9 +66,9 @@ namespace vks
 			return renderPassBeginInfo;
 		}
 
-		inline vk::RenderPassCreateInfo renderPassCreateInfo()
+		inline vk::RenderPassCreateInfo2 renderPassCreateInfo()
 		{
-			vk::RenderPassCreateInfo renderPassCreateInfo {};
+			vk::RenderPassCreateInfo2 renderPassCreateInfo {};
 			return renderPassCreateInfo;
 		}
 

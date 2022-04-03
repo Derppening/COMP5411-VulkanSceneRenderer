@@ -75,10 +75,10 @@ namespace vks
 		imageInfo.sharingMode = vk::SharingMode::eExclusive;
 		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
 		fontImage = device->logicalDevice->createImageUnique(imageInfo);
-		vk::MemoryRequirements memReqs = device->logicalDevice->getImageMemoryRequirements(*fontImage);
+		vk::MemoryRequirements2 memReqs = device->logicalDevice->getImageMemoryRequirements2(*fontImage);
 		vk::MemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
-		memAllocInfo.allocationSize = memReqs.size;
-		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		memAllocInfo.allocationSize = memReqs.memoryRequirements.size;
+		memAllocInfo.memoryTypeIndex = device->getMemoryType(memReqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 		fontMemory = device->logicalDevice->allocateMemoryUnique(memAllocInfo);
 		device->logicalDevice->bindImageMemory(*fontImage, *fontMemory, 0);
 

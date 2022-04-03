@@ -104,13 +104,13 @@ public:
 	// Physical device (GPU) that Vulkan will use
 	vk::PhysicalDevice physicalDevice;
 	// Stores physical device properties (for e.g. checking device limits)
-	vk::PhysicalDeviceProperties deviceProperties;
+	vk::PhysicalDeviceProperties2 deviceProperties;
 	// Stores the features available on the selected physical device (for e.g. checking if a feature is available)
-	vk::PhysicalDeviceFeatures deviceFeatures;
+	vk::PhysicalDeviceFeatures2 deviceFeatures;
 	// Stores all available memory (type) properties for the physical device
-	vk::PhysicalDeviceMemoryProperties deviceMemoryProperties;
+	vk::PhysicalDeviceMemoryProperties2 deviceMemoryProperties;
 	/** @brief Set of physical device features to be enabled for this example (must be set in the derived constructor) */
-	vk::PhysicalDeviceFeatures enabledFeatures{};
+	vk::PhysicalDeviceFeatures2 enabledFeatures{};
 	/** @brief Set of device extensions to be enabled for this example (must be set in the derived constructor) */
 	std::vector<const char*> enabledDeviceExtensions;
 	std::vector<const char*> enabledInstanceExtensions;
@@ -195,7 +195,7 @@ public:
 
 	std::string title = "Vulkan Example";
 	std::string name = "vulkanExample";
-	uint32_t apiVersion = VK_API_VERSION_1_0;
+	uint32_t apiVersion = VK_API_VERSION_1_2;
 
 	struct {
 		vk::UniqueImage image;

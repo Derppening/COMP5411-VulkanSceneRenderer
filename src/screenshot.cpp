@@ -22,18 +22,18 @@ void screenshot::capture() {
   bool supports_blit = true;
 
   // Check blit support for source and destination
-  vk::FormatProperties format_props;
+  vk::FormatProperties2 format_props;
 
   // Check if the device supports blitting from optimal images (the swapchain images are in optimal format)
-  format_props = app.physicalDevice.getFormatProperties(app.swapChain.colorFormat);
-  if (!(format_props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc)) {
+  format_props = app.physicalDevice.getFormatProperties2(app.swapChain.colorFormat);
+  if (!(format_props.formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc)) {
     fmt::print(stderr, "Device does not support blitting from optimal tiled images, using copy instead of blit!\n");
     supports_blit = false;
   }
 
   // Check if the device supports blitting to linear images
-  format_props = app.physicalDevice.getFormatProperties(vk::Format::eR8G8B8A8Unorm);
-  if (!(format_props.linearTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst)) {
+  format_props = app.physicalDevice.getFormatProperties2(vk::Format::eR8G8B8A8Unorm);
+  if (!(format_props.formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst)) {
     fmt::print(stderr, "Device does not support blitting to linear tiled images, using copy instead of blit!\n");
     supports_blit = false;
   }
@@ -58,11 +58,11 @@ void screenshot::capture() {
   // Create the image
   vk::UniqueImage dst_image = app.device.createImageUnique(image_create_ci);
   // Create memory to back up the image
-  auto mem_requirements = app.device.getImageMemoryRequirements(*dst_image);
+  auto mem_requirements = app.device.getImageMemoryRequirements2(*dst_image);
   auto mem_alloc_info = vks::initializers::memoryAllocateInfo();
-  mem_alloc_info.allocationSize = mem_requirements.size;
+  mem_alloc_info.allocationSize = mem_requirements.memoryRequirements.size;
   // Memory must be host visible to copy from
-  mem_alloc_info.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_requirements.memoryTypeBits,
+  mem_alloc_info.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_requirements.memoryRequirements.memoryTypeBits,
                                                                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
   vk::UniqueDeviceMemory dst_image_memory = app.device.allocateMemoryUnique(mem_alloc_info);
   app.device.bindImageMemory(*dst_image, *dst_image_memory, 0);

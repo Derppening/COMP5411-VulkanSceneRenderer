@@ -1,7 +1,7 @@
 #include "tessellation.h"
 
 bool tessellation::supported() const {
-  return app().enabledFeatures.tessellationShader;
+  return app().enabledFeatures.features.tessellationShader;
 }
 
 void tessellation::populate_ci(vk::GraphicsPipelineCreateInfo& create_info,

@@ -7,8 +7,8 @@ void multisample_target::destroy() {
 }
 
 void image_multisample_target::setup(VulkanExampleBase& app) {
-  assert((app.deviceProperties.limits.framebufferColorSampleCounts >= sample_count()) &&
-      (app.deviceProperties.limits.framebufferDepthSampleCounts >= sample_count()));
+  assert((app.deviceProperties.properties.limits.framebufferColorSampleCounts >= sample_count()) &&
+      (app.deviceProperties.properties.limits.framebufferDepthSampleCounts >= sample_count()));
 
   // Color target
   auto info = vks::initializers::imageCreateInfo();
@@ -28,16 +28,16 @@ void image_multisample_target::setup(VulkanExampleBase& app) {
 
   image() = app.device.createImageUnique(info);
 
-  vk::MemoryRequirements mem_reqs = app.device.getImageMemoryRequirements(*image());
+  vk::MemoryRequirements2 mem_reqs = app.device.getImageMemoryRequirements2(*image());
   auto mem_alloc = vks::initializers::memoryAllocateInfo();
-  mem_alloc.allocationSize = mem_reqs.size;
+  mem_alloc.allocationSize = mem_reqs.memoryRequirements.size;
   // We prefer a lazily allocated memory type
   // This means that the memory gets allocated when the implementation sees fit, e.g. when first using the images
   vk::Bool32 lazy_mem_type_present;
-  mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
+  mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
   if (!lazy_mem_type_present) {
     // If this is not available, fall back to device local memory
-    mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
   }
   memory() = app.device.allocateMemoryUnique(mem_alloc);
   app.device.bindImageMemory(*image(), *memory(), 0);
@@ -59,8 +59,8 @@ void image_multisample_target::setup(VulkanExampleBase& app) {
 }
 
 void depth_multisample_target::setup(VulkanExampleBase& app) {
-  assert((app.deviceProperties.limits.framebufferColorSampleCounts >= sample_count()) &&
-      (app.deviceProperties.limits.framebufferDepthSampleCounts >= sample_count()));
+  assert((app.deviceProperties.properties.limits.framebufferColorSampleCounts >= sample_count()) &&
+      (app.deviceProperties.properties.limits.framebufferDepthSampleCounts >= sample_count()));
 
   // Depth target
   auto info = vks::initializers::imageCreateInfo();
@@ -80,13 +80,13 @@ void depth_multisample_target::setup(VulkanExampleBase& app) {
 
   image() = app.device.createImageUnique(info);
 
-  vk::MemoryRequirements mem_reqs = app.device.getImageMemoryRequirements(*image());
+  vk::MemoryRequirements2 mem_reqs = app.device.getImageMemoryRequirements2(*image());
   auto mem_alloc = vks::initializers::memoryAllocateInfo();
-  mem_alloc.allocationSize = mem_reqs.size;
+  mem_alloc.allocationSize = mem_reqs.memoryRequirements.size;
   vk::Bool32 lazy_mem_type_present;
-  mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
+  mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eLazilyAllocated, &lazy_mem_type_present);
   if (!lazy_mem_type_present) {
-    mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    mem_alloc.memoryTypeIndex = app.vulkanDevice->getMemoryType(mem_reqs.memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
   }
 
   memory() = app.device.allocateMemoryUnique(mem_alloc);
