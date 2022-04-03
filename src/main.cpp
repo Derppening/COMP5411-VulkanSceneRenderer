@@ -633,7 +633,7 @@ void vulkan_scene_renderer::OnUpdateUIOverlay(vks::UIOverlay* overlay) {
       }
     }
 
-    if (deviceFeatures.fillModeNonSolid) {
+    if (enabledFeatures.fillModeNonSolid) {
       if (overlay->checkBox("Wireframe", &_wireframe_)) {
         _light_cube_.wireframe() = _wireframe_;
         _light_cube_.prepare_pipeline();
