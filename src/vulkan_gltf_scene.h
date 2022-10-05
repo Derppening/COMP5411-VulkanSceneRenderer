@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <tiny_gltf.h>
 #include <vulkan/vulkan.hpp>
 
@@ -39,11 +40,17 @@ class vulkan_gltf_scene {
 
   struct node {
     node* parent;
-    std::vector<node> children;
+    std::vector<std::unique_ptr<node>> children;
     vulkan_gltf_scene::mesh mesh;
     glm::mat4 matrix;
     std::string name;
     bool visible = true;
+
+    ~node() {
+      for (auto& child : children) {
+        child.reset();
+      }
+    }
   };
 
   struct material {
@@ -68,7 +75,7 @@ class vulkan_gltf_scene {
   std::vector<image> images;
   std::vector<texture> textures;
   std::vector<material> materials;
-  std::vector<node> nodes;
+  std::vector<std::unique_ptr<node>> nodes;
 
   std::string path;
 

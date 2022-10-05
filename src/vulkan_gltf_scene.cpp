@@ -3,6 +3,9 @@
 #include <fmt/format.h>
 
 vulkan_gltf_scene::~vulkan_gltf_scene() {
+  for (auto& node : nodes) {
+    node.reset();
+  }
   // Release all Vulkan resources allocated for the model
   vertices.destroy();
   indices.buffer.destroy();
@@ -64,30 +67,32 @@ void vulkan_gltf_scene::load_node(const tinygltf::Node& input_node,
                                   vulkan_gltf_scene::node* parent,
                                   std::vector<std::uint32_t>& index_buffer,
                                   std::vector<vulkan_gltf_scene::vertex>& vertex_buffer) {
-  vulkan_gltf_scene::node node{};
-  node.name = input_node.name;
+//  vulkan_gltf_scene::node node{};
+  std::unique_ptr<vulkan_gltf_scene::node> node = std::make_unique<vulkan_gltf_scene::node>();
+  node->name = input_node.name;
+  node->parent = parent;
 
   // Get the local node matrix
   // It's either made up from translation, rotation, scale or a 4x4 matrix
-  node.matrix = glm::mat4{1.0f};
+  node->matrix = glm::mat4{1.0f};
   if (input_node.translation.size() == 3) {
-    node.matrix = glm::translate(node.matrix, glm::vec3{glm::make_vec3(input_node.translation.data())});
+    node->matrix = glm::translate(node->matrix, glm::vec3{glm::make_vec3(input_node.translation.data())});
   }
   if (input_node.rotation.size() == 4) {
     glm::quat q = glm::make_quat(input_node.rotation.data());
-    node.matrix *= glm::mat4{q};
+    node->matrix *= glm::mat4{q};
   }
   if (input_node.scale.size() == 3) {
-    node.matrix = glm::scale(node.matrix, glm::vec3{glm::make_vec3(input_node.scale.data())});
+    node->matrix = glm::scale(node->matrix, glm::vec3{glm::make_vec3(input_node.scale.data())});
   }
   if (input_node.matrix.size() == 16) {
-    node.matrix = glm::make_mat4x4(input_node.matrix.data());
+    node->matrix = glm::make_mat4x4(input_node.matrix.data());
   }
 
   // Load node's children
   if (input_node.children.size() > 0) {
     for (size_t i = 0; i < input_node.children.size(); i++) {
-      load_node(input.nodes[static_cast<std::size_t>(input_node.children[i])], input, &node, index_buffer, vertex_buffer);
+      load_node(input.nodes[static_cast<std::size_t>(input_node.children[i])], input, node.get(), index_buffer, vertex_buffer);
     }
   }
 
@@ -198,14 +203,14 @@ void vulkan_gltf_scene::load_node(const tinygltf::Node& input_node,
       primitive.first_index = first_index;
       primitive.index_count = index_count;
       primitive.material_index = gltf_primitive.material;
-      node.mesh.primitives.emplace_back(primitive);
+      node->mesh.primitives.emplace_back(primitive);
     }
   }
 
   if (parent) {
-    parent->children.push_back(node);
+    parent->children.push_back(std::move(node));
   } else {
-    nodes.push_back(node);
+    nodes.push_back(std::move(node));
   }
 }
 
@@ -246,7 +251,7 @@ void vulkan_gltf_scene::draw_node(vk::CommandBuffer command_buffer,
     }
   }
   for (auto& child : node.children) {
-    draw_node(command_buffer, pipeline_layout, child, pipeline);
+    draw_node(command_buffer, pipeline_layout, *child, pipeline);
   }
 }
 
@@ -259,6 +264,6 @@ void vulkan_gltf_scene::draw(vk::CommandBuffer command_buffer,
   command_buffer.bindIndexBuffer(*indices.buffer.buffer, 0, vk::IndexType::eUint32);
   // Render all nodes at top-level
   for (auto& node : nodes) {
-    draw_node(command_buffer, pipeline_layout, node, pipeline);
+    draw_node(command_buffer, pipeline_layout, *node, pipeline);
   }
 }
