@@ -534,6 +534,10 @@ bool VulkanExampleBase::initVulkan()
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
 	vulkanDevice = std::make_unique<vks::VulkanDevice>(physicalDevice);
+
+    // Derived examples can enable extensions based on the list of supported extensions read from the physical device
+    getEnabledExtensions();
+
 	vk::Result res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
 	if (res != vk::Result::eSuccess) {
 		vks::tools::exitFatal("Could not create Vulkan device: \n" + vks::tools::errorString(vk::Result(res)), res);
@@ -822,6 +826,8 @@ void VulkanExampleBase::setupRenderPass()
 }
 
 void VulkanExampleBase::getEnabledFeatures() {}
+
+void VulkanExampleBase::getEnabledExtensions() {}
 
 void VulkanExampleBase::windowResize()
 {
