@@ -8,6 +8,8 @@
 
 #include "VulkanTools.h"
 
+#include <memory>
+
 const std::string getAssetPath()
 {
 #if defined(VK_EXAMPLE_DATA_DIR)
