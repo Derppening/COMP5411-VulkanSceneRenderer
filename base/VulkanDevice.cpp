@@ -95,6 +95,7 @@ namespace vks
 
 	/**
 	* Get the index of a queue family that supports the requested queue flags
+	* SRS - support VkQueueFlags parameter for requesting multiple flags vs. VkQueueFlagBits for a single flag only
 	*
 	* @param queueFlags Queue flags to find a queue family index for
 	*
@@ -102,15 +103,15 @@ namespace vks
 	*
 	* @throw Throws an exception if no queue family index could be found that supports the requested flags
 	*/
-	uint32_t VulkanDevice::getQueueFamilyIndex(vk::QueueFlagBits queueFlags) const
+	uint32_t VulkanDevice::getQueueFamilyIndex(vk::QueueFlags queueFlags) const
 	{
 		// Dedicated queue for compute
 		// Try to find a queue family index that supports compute but not graphics
-		if (queueFlags & vk::QueueFlagBits::eCompute)
+		if ((queueFlags & vk::QueueFlagBits::eCompute) == queueFlags)
 		{
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 			{
-				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)))
+				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)))
 				{
 					return i;
 				}
@@ -119,11 +120,11 @@ namespace vks
 
 		// Dedicated queue for transfer
 		// Try to find a queue family index that supports transfer but not graphics and compute
-		if (queueFlags & vk::QueueFlagBits::eTransfer)
+		if ((queueFlags & vk::QueueFlagBits::eTransfer) == queueFlags)
 		{
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 			{
-				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute)))
+				if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eTransfer) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)) && (!(queueFamilyProperties[i].queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute)))
 				{
 					return i;
 				}
@@ -133,7 +134,7 @@ namespace vks
 		// For other queue types or if no separate compute queue is present, return the first one to support the requested flags
 		for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 		{
-			if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags)
+			if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags) == queueFlags)
 			{
 				return i;
 			}
@@ -206,7 +207,7 @@ namespace vks
 			queueFamilyIndices.transfer = getQueueFamilyIndex(vk::QueueFlagBits::eTransfer);
 			if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
 			{
-				// If compute family index differs, we need an additional queue create info for the compute queue
+				// If transfer family index differs, we need an additional queue create info for the compute queue
 				vk::DeviceQueueCreateInfo queueInfo{};
 				queueInfo.queueFamilyIndex = queueFamilyIndices.transfer;
 				queueInfo.queueCount = 1;

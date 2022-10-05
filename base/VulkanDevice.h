@@ -55,7 +55,7 @@ struct VulkanDevice
 	explicit VulkanDevice(vk::PhysicalDevice physicalDevice);
 	~VulkanDevice();
 	uint32_t                getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, vk::Bool32 *memTypeFound = nullptr) const;
-	uint32_t                getQueueFamilyIndex(vk::QueueFlagBits queueFlags) const;
+	uint32_t                getQueueFamilyIndex(vk::QueueFlags queueFlags) const;
 	vk::Result              createLogicalDevice(vk::PhysicalDeviceFeatures2 enabledFeatures, std::vector<const char *> enabledExtensions, void *pNextChain, bool useSwapChain = true, vk::QueueFlags requestedQueueTypes = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
 	vk::Result              createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::DeviceSize size, vk::UniqueBuffer *buffer, vk::UniqueDeviceMemory *memory, void *data = nullptr);
 	vk::Result              createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, vk::DeviceSize size, void *data = nullptr);
