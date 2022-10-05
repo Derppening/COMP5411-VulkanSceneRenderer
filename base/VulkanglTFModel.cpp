@@ -264,6 +264,10 @@ void vkglTF::Texture::fromglTfImage(tinygltf::Image &gltfimage, std::string path
 			blitCmd->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, {}, {}, {}, {imageMemoryBarrier});
 		}
 
+        if (deleteBuffer) {
+          delete[] buffer;
+        }
+
 		device->flushCommandBuffer(blitCmd, copyQueue, true);
 	}
 	else {
