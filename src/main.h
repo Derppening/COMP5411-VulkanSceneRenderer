@@ -29,6 +29,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
   void update_uniform_buffers();
   void prepare() override;
   void render() override;
+  void viewChanged() override;
   void draw();
   void OnUpdateUIOverlay(vks::UIOverlay* overlay) override;
   void windowResized() override;

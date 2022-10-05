@@ -578,6 +578,10 @@ void vulkan_scene_renderer::render() {
   }
 }
 
+void vulkan_scene_renderer::viewChanged() {
+  update_uniform_buffers();
+}
+
 void vulkan_scene_renderer::draw() {
   VulkanExampleBase::prepareFrame();
   if (resized) {
