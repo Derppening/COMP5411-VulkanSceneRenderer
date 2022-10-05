@@ -331,7 +331,7 @@ void VulkanExampleBase::updateOverlay()
 
 void VulkanExampleBase::drawUI(const vk::CommandBuffer commandBuffer)
 {
-	if (settings.overlay) {
+	if (settings.overlay && UIOverlay.visible) {
 		const vk::Viewport viewport = vks::initializers::viewport((float)width, (float)height, 0.0f, 1.0f);
 		const vk::Rect2D scissor = vks::initializers::rect2D(width, height, 0, 0);
 		commandBuffer.setViewport(0, {viewport});
@@ -638,8 +638,9 @@ void VulkanExampleBase::keyCallback(GLFWwindow* window, int key, int scancode, i
       }
       break;
     case GLFW_KEY_F1:
-      if (action == GLFW_PRESS && app->settings.overlay) {
-        app->settings.overlay = !app->settings.overlay;
+      if (action == GLFW_PRESS) {
+        app->UIOverlay.visible = !app->UIOverlay.visible;
+        app->UIOverlay.updated = true;
       }
       break;
     default:
