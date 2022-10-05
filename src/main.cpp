@@ -27,7 +27,7 @@ vulkan_scene_renderer::~vulkan_scene_renderer() {
   _gs_pipeline_.unbind();
   _ts_.unbind();
   _pipeline_layout_.reset();
-  descriptor_set_layouts.textures.reset();
+  _descriptor_set_layouts_.textures.reset();
 
   _depth_ms_target_.unbind();
   _color_ms_target_.unbind();
@@ -359,7 +359,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   auto descriptor_set_layout_ci = vks::initializers::descriptorSetLayoutCreateInfo(set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
   descriptor_set_layout_ci.pBindings = set_layout_bindings.data();
   descriptor_set_layout_ci.bindingCount = 2;
-  descriptor_set_layouts.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
+  _descriptor_set_layouts_.textures = device.createDescriptorSetLayoutUnique(descriptor_set_layout_ci);
 
   // Descriptor set layout for passing dynamic settings
   _settings_ubo_.setup_descriptor_set_layout(device, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
@@ -369,7 +369,7 @@ void vulkan_scene_renderer::setup_descriptors() {
   // Pipeline layout using both descriptor sets (set 0 = matrices, set 1 = material, set 2 = settings)
   auto setLayouts = std::array{
       _matrices_ubo_.descriptor_set_layout(),
-      *descriptor_set_layouts.textures,
+      *_descriptor_set_layouts_.textures,
       _settings_ubo_.descriptor_set_layout(),
       _light_ubo_.descriptor_set_layout()
   };
@@ -386,7 +386,7 @@ void vulkan_scene_renderer::setup_descriptors() {
 
   // Descriptor sets for materials
   for (auto& material : _gltf_scene_.materials) {
-    const vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*descriptor_set_layouts.textures, 1);
+    const vk::DescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(*descriptorPool, &*_descriptor_set_layouts_.textures, 1);
     material.descriptor_set = device.allocateDescriptorSets(allocInfo)[0];
     vk::DescriptorImageInfo colorMap = _gltf_scene_.get_texture_descriptor(material.base_color_texture_index);
     vk::DescriptorImageInfo normalMap = _gltf_scene_.get_texture_descriptor(material.normal_texture_index);
@@ -859,7 +859,7 @@ void vulkan_scene_renderer::_update_sample_count(vk::SampleCountFlagBits sample_
     setupRenderPass();
     setupFrameBuffer();
     prepare_pipelines();
-    UIOverlay.preparePipeline(*pipelineCache, *renderPass);
+    UIOverlay.preparePipeline(*pipelineCache, *renderPass, swapChain.colorFormat, depthFormat);
     _light_cube_.prepare_pipeline();
 
     buildCommandBuffers();

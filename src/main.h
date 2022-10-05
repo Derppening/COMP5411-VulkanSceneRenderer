@@ -47,7 +47,7 @@ class vulkan_scene_renderer : public VulkanExampleBase {
 
   struct descriptor_set_layouts {
     vk::UniqueDescriptorSetLayout textures;
-  } descriptor_set_layouts;
+  } _descriptor_set_layouts_;
 
   vk::Extent2D _attachment_size_;
 
