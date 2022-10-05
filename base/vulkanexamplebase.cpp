@@ -46,6 +46,14 @@ void VulkanExampleBase::createInstance(bool enableValidation)
         }
 	}
 
+#if defined(VK_KHR_portability_enumeration)
+    // SRS - When VK_KHR_portability_enumeration is defined and supported, enable it to properly enumerate the physical device
+    if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(), VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) != supportedInstanceExtensions.end())
+    {
+        enabledInstanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+    }
+#endif
+
 	// Enabled requested instance extensions
 	if (enabledInstanceExtensions.size() > 0)
 	{
@@ -67,11 +75,19 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 	{
 		if (settings.validation)
 		{
+            instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);	// SRS - Dependency when VK_EXT_DEBUG_MARKER is enabled
 			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
 		instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
 	}
+#if defined(VK_KHR_portability_enumeration)
+    // SRS - When VK_KHR_portability_enumeration is defined and enabled, the VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR flag must be set
+    if (std::find(instanceExtensions.begin(), instanceExtensions.end(), VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) != instanceExtensions.end())
+    {
+        instanceCreateInfo.flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+    }
+#endif
 
     // The VK_LAYER_KHRONOS_validation contains all current validation functionality.
     // Note that on Android this layer requires at least NDK r20
