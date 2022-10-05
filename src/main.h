@@ -48,6 +48,8 @@ class vulkan_scene_renderer : public VulkanExampleBase {
     vk::UniqueDescriptorSetLayout textures;
   } descriptor_set_layouts;
 
+  vk::Extent2D _attachment_size_;
+
   struct alignas(4) _matrices {
     glm::mat4 projection;
     glm::mat4 view;

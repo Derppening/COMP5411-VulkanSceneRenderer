@@ -115,6 +115,8 @@ void vulkan_scene_renderer::setupRenderPass() {
   if (_current_sample_count() == vk::SampleCountFlagBits::e1) {
     VulkanExampleBase::setupRenderPass();
   } else {
+    _attachment_size_ = vk::Extent2D{width, height};
+
     std::array<vk::AttachmentDescription2, 3> attachments = {};
 
     // Multisampled attachment that we render to
@@ -204,6 +206,14 @@ void vulkan_scene_renderer::setupFrameBuffer() {
   if (_current_sample_count() == vk::SampleCountFlagBits::e1) {
     VulkanExampleBase::setupFrameBuffer();
   } else {
+    // SRS - If the window is resized, the MSAA attachments need to be released and recreated
+    if (_attachment_size_.width != width || _attachment_size_.height != height) {
+      _attachment_size_ = vk::Extent2D{width, height};
+
+      _color_ms_target_.unbind();
+      _depth_ms_target_.unbind();
+    }
+
     std::array<vk::ImageView, 3> attachments = {};
 
     _setup_multisample_target();
