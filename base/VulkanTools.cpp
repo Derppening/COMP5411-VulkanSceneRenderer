@@ -40,7 +40,7 @@ namespace vks
 			// Since all depth formats may be optional, we need to find a suitable depth format to use
 			// Start with the highest precision packed format
 			std::vector<vk::Format> depthFormats = {
-				vk::Format::eD32SfloatS8Uint,
+				//vk::Format::eD32SfloatS8Uint,
 				vk::Format::eD32Sfloat,
 				vk::Format::eD24UnormS8Uint,
 				vk::Format::eD16UnormS8Uint,
@@ -73,6 +73,17 @@ namespace vks
 
 			return false;
 		}
+
+        vk::Bool32 formatHasStencil(vk::Format format)
+        {
+          std::vector<vk::Format> stencilFormats = {
+              vk::Format::eS8Uint,
+              vk::Format::eD16UnormS8Uint,
+              vk::Format::eD24UnormS8Uint,
+              vk::Format::eD32SfloatS8Uint
+          };
+          return std::find(stencilFormats.begin(), stencilFormats.end(), format) != std::end(stencilFormats);
+        }
 
 		// Create an image memory barrier for changing the layout of
 		// an image and put it into an active command buffer
