@@ -176,7 +176,7 @@ void VulkanExampleBase::prepare()
 			loadShader(getShadersPath() + "base/uioverlay.frag.spv", vk::ShaderStageFlagBits::eFragment),
 		};
 		UIOverlay.prepareResources();
-		UIOverlay.preparePipeline(*pipelineCache, *renderPass);
+		UIOverlay.preparePipeline(*pipelineCache, *renderPass, swapChain.colorFormat, depthFormat);
 	}
 }
 
