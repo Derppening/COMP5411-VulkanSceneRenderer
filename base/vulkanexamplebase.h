@@ -97,7 +97,7 @@ public:
 	// Frame counter to display fps
 	uint32_t frameCounter = 0;
 	uint32_t lastFPS = 0;
-	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
+	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp, tPrevEnd;
 	// Vulkan instance, stores all per-application states
 	vk::UniqueInstance instance;
 	std::vector<std::string> supportedInstanceExtensions;
@@ -286,6 +286,5 @@ int main(const int argc, const char *argv[])													    \
 	vulkanExample->initVulkan();																	\
 	vulkanExample->prepare();																		\
 	vulkanExample->renderLoop();																	\
-	delete(vulkanExample);																			\
 	return 0;																						\
 }

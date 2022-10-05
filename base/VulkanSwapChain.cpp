@@ -151,7 +151,7 @@ void VulkanSwapChain::connect(vk::Instance instance, vk::PhysicalDevice physical
 * @param height Pointer to the height of the swapchain (may be adjusted to fit the requirements of the swapchain)
 * @param vsync (Optional) Can be used to force vsync-ed rendering (by using VK_PRESENT_MODE_FIFO_KHR as presentation mode)
 */
-void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync)
+void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync, bool fullscreen)
 {
     // Store the current swap chain handle so we can use it later on to ease up recreation
     vk::SwapchainKHR oldSwapchain = *swapChain;

@@ -46,7 +46,7 @@ public:
 	void initSurface(GLFWwindow* window);
 
 	void connect(vk::Instance instance, vk::PhysicalDevice physicalDevice, vk::Device device);
-	void create(uint32_t* width, uint32_t* height, bool vsync = false);
+	void create(uint32_t* width, uint32_t* height, bool vsync = false, bool fullscreen = false);
 	vk::Result acquireNextImage(vk::Semaphore presentCompleteSemaphore, uint32_t* imageIndex);
 	vk::Result queuePresent(vk::Queue queue, uint32_t imageIndex, vk::Semaphore waitSemaphore = {});
 	void cleanup();

@@ -210,7 +210,7 @@ vk::PipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string file
 
 void VulkanExampleBase::nextFrame()
 {
-	auto tStart = std::chrono::high_resolution_clock::now();
+	//auto tStart = std::chrono::high_resolution_clock::now();
 	if (viewUpdated)
 	{
 		viewUpdated = false;
@@ -220,7 +220,9 @@ void VulkanExampleBase::nextFrame()
 	render();
 	frameCounter++;
 	auto tEnd = std::chrono::high_resolution_clock::now();
-	auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+    // SRS - Calculate tDiff as time between frames vs. rendering time for Win32/macOS/iOS vsync portability
+    //auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+    auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tPrevEnd).count();
 	frameTimer = (float)tDiff / 1000.0f;
 	camera.update(frameTimer);
 	if (camera.moving())
@@ -243,6 +245,8 @@ void VulkanExampleBase::nextFrame()
 		frameCounter = 0;
 		lastTimestamp = tEnd;
 	}
+    tPrevEnd = tEnd;
+
 	// TODO: Cap UI overlay update rates
 	updateOverlay();
 }
@@ -253,6 +257,7 @@ void VulkanExampleBase::renderLoop()
 	destWidth = width;
 	destHeight = height;
 	lastTimestamp = std::chrono::high_resolution_clock::now();
+    tPrevEnd = lastTimestamp;
 	while (!glfwWindowShouldClose(window)) {
         auto tStart = std::chrono::high_resolution_clock::now();
         if (viewUpdated)
@@ -357,14 +362,14 @@ void VulkanExampleBase::prepareFrame()
     try {
         // Acquire the next image from the swap chain
         vk::Result result = swapChain.acquireNextImage(*semaphores.presentComplete, &currentBuffer);
-        // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+        // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE)
+        // SRS - If no longer optimal (VK_SUBOPTIMAL_KHR), wait until submitFrame() in case number of swapchain images will change on resize
         if (result == vk::Result::eSuboptimalKHR) {
-            windowResize();
         } else if (result != vk::Result::eSuccess) {
             VK_CHECK_RESULT(result);
         }
     } catch (const vk::OutOfDateKHRError&) {
-      windowResize();
+        windowResize();
     }
 }
 
@@ -372,13 +377,15 @@ void VulkanExampleBase::submitFrame()
 {
     try {
         vk::Result result = swapChain.queuePresent(queue, currentBuffer, *semaphores.renderComplete);
-        if (!((result == vk::Result::eSuccess) || (result == vk::Result::eSuboptimalKHR))) {
+        // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+        if (result == vk::Result::eSuboptimalKHR) {
+            windowResize();
+        } else {
             VK_CHECK_RESULT(result);
         }
     } catch (const vk::OutOfDateKHRError&) {
-      // Swap chain is no longer compatible with the surface and needs to be recreated
-      windowResize();
-      return;
+        windowResize();
+        return;
     }
     queue.waitIdle();
 }
@@ -921,7 +928,7 @@ void VulkanExampleBase::initSwapchain()
 
 void VulkanExampleBase::setupSwapChain()
 {
-	swapChain.create(&width, &height, settings.vsync);
+	swapChain.create(&width, &height, settings.vsync, settings.fullscreen);
 }
 
 void VulkanExampleBase::OnUpdateUIOverlay(vks::UIOverlay *overlay) {}
