@@ -40,7 +40,7 @@ namespace vks
 			// Since all depth formats may be optional, we need to find a suitable depth format to use
 			// Start with the highest precision packed format
 			std::vector<vk::Format> depthFormats = {
-				//vk::Format::eD32SfloatS8Uint,
+				vk::Format::eD32SfloatS8Uint,
 				vk::Format::eD32Sfloat,
 				vk::Format::eD24UnormS8Uint,
 				vk::Format::eD16UnormS8Uint,
