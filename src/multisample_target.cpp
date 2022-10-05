@@ -101,7 +101,9 @@ void depth_multisample_target::setup(VulkanExampleBase& app) {
   view_info.components.g = vk::ComponentSwizzle::eG;
   view_info.components.b = vk::ComponentSwizzle::eB;
   view_info.components.a = vk::ComponentSwizzle::eA;
-  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+  view_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+  if (app.depthFormat >= vk::Format::eD16UnormS8Uint)
+    view_info.subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
   view_info.subresourceRange.levelCount = 1;
   view_info.subresourceRange.layerCount = 1;
 
