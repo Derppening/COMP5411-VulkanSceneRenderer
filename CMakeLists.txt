@@ -13,7 +13,7 @@ find_package(Vulkan REQUIRED)
 FetchContent_Declare(
         fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-        GIT_TAG 8.1.1
+        GIT_TAG 9.1.0
         GIT_SHALLOW ON)
 FetchContent_GetProperties(fmt)
 if (NOT fmt_POPULATED)
@@ -24,7 +24,7 @@ endif ()
 FetchContent_Declare(
         glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.6
+        GIT_TAG 3.3.8
         GIT_SHALLOW ON)
 FetchContent_GetProperties(glfw)
 if (NOT glfw_POPULATED)
@@ -40,7 +40,7 @@ endif ()
 FetchContent_Declare(
         imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
-        GIT_TAG v1.87
+        GIT_TAG v1.88
         GIT_SHALLOW ON)
 FetchContent_GetProperties(imgui)
 if (NOT imgui_POPULATED)
@@ -52,7 +52,7 @@ endif ()
 FetchContent_Declare(
         tinygltf
         GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
-        GIT_TAG v2.5.0
+        GIT_TAG v2.6.3
         GIT_SHALLOW ON)
 FetchContent_GetProperties(tinygltf)
 if (NOT tinygltf_POPULATED)
