@@ -22,6 +22,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <fstream>
+#include <algorithm>
 #include <optional>
 
 // Default fence timeout in nanoseconds
